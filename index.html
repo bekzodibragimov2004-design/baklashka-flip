@@ -1,0 +1,2576 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0d1015">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<title>Baklashka Flip</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=El+Messiri:wght@600;700&family=Rubik:wght@500;700;800&display=swap">
+<style>
+/* Layout: one portrait game column centred on the page; the canvas draws everything. */
+:root{
+  --page:#0d1015;
+  --ui-font:Rubik,system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%;overscroll-behavior:none;}
+body{margin:0;background:var(--page);display:flex;justify-content:center;overflow:hidden;font-family:var(--ui-font);}
+#wrap{position:relative;height:100%;}
+#c{display:block;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:crosshair;}
+#snd{position:absolute;right:calc(10px + env(safe-area-inset-right,0px));bottom:calc(10px + env(safe-area-inset-bottom,0px));width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.28);background:rgba(10,14,22,.42);color:#fff;display:grid;place-items:center;cursor:pointer;padding:0;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
+#snd:focus-visible{outline:2px solid #8fd0ff;outline-offset:2px;}
+#shop{position:absolute;left:calc(10px + env(safe-area-inset-left,0px));bottom:calc(10px + env(safe-area-inset-bottom,0px));display:flex;gap:6px;}
+#shop button{display:flex;align-items:center;gap:6px;height:40px;padding:0 12px;border-radius:20px;border:1px solid rgba(255,255,255,.28);background:rgba(10,14,22,.42);color:#fff;font:700 13px var(--ui-font);cursor:pointer;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);white-space:nowrap;}
+#shop button:disabled{opacity:.4;cursor:default;}
+#shop button:focus-visible{outline:2px solid #8fd0ff;outline-offset:2px;}
+#shop .price{display:inline-flex;align-items:center;gap:3px;color:#ffd76a;}
+#shop .price i{width:11px;height:11px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff6c8,#f2c24a 55%,#a9741a);}
+#btn-menu{position:absolute;right:calc(58px + env(safe-area-inset-right,0px));bottom:calc(10px + env(safe-area-inset-bottom,0px));width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.28);background:rgba(10,14,22,.42);color:#fff;display:grid;place-items:center;cursor:pointer;padding:0;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
+#btn-menu:disabled{opacity:.4;cursor:default;}
+#btn-menu:focus-visible{outline:2px solid #8fd0ff;outline-offset:2px;}
+#menu{position:absolute;inset:0;z-index:5;overflow-y:auto;overflow-x:hidden;color:#fff;background:rgba(6,10,18,.74);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);}
+#menu .panel{display:flex;flex-direction:column;gap:10px;padding-block:calc(18px + env(safe-area-inset-top,0px)) calc(24px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));}
+#menu h1{font:700 34px "El Messiri",Georgia,serif;margin:4px 0 0;text-align:center;}
+#menu h2{font:700 18px "El Messiri",Georgia,serif;margin:6px 0 0;color:#ffe1a6;}
+#menu .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;}
+#menu .pick{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;padding:8px 4px;border-radius:12px;border:1.5px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#fff;cursor:pointer;font:inherit;}
+#menu .pick[aria-pressed="true"]{border-color:#ffd76a;background:rgba(255,215,106,.15);}
+#menu .pick:focus-visible,#menu .actions button:focus-visible{outline:2px solid #8fd0ff;outline-offset:2px;}
+#menu .pick canvas{width:48px;height:64px;}
+#pick-theme .pick canvas{width:100%;height:auto;aspect-ratio:3/2;border-radius:8px;}
+#menu .nm{font:700 13px var(--ui-font);}
+#menu .nt{font:500 10.5px var(--ui-font);color:rgba(255,255,255,.72);text-align:center;}
+#menu .actions{display:flex;gap:8px;margin-top:4px;}
+#menu .actions button{flex:1;height:46px;border-radius:23px;font:800 16px var(--ui-font);cursor:pointer;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.08);color:#fff;}
+#menu .actions .primary{background:linear-gradient(#ffd76a,#e9a93a);color:#2a1a05;border:0;}
+#lb-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;counter-reset:r;}
+#lb-list li{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:10px;background:rgba(255,255,255,.06);font:600 14px var(--ui-font);counter-increment:r;}
+#lb-list li::before{content:counter(r);min-width:16px;color:#ffd76a;font-weight:800;}
+#lb-list li.me{background:rgba(255,215,106,.16);}
+#lb-list img{width:22px;height:22px;border-radius:50%;}
+#lb-list .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#lb-list b{font-variant-numeric:tabular-nums;}
+#lb-note{margin:0;font:500 12.5px var(--ui-font);color:rgba(255,255,255,.75);}
+#menu .coins{margin:-4px 0 0;text-align:center;font:700 14px var(--ui-font);color:#ffd76a;}
+#menu .langs{display:flex;justify-content:center;gap:6px;}
+#menu .langs button{height:30px;padding:0 14px;border-radius:15px;border:1px solid rgba(255,255,255,.28);background:transparent;color:#fff;font:700 12.5px var(--ui-font);cursor:pointer;}
+#menu .langs button[aria-pressed="true"]{background:#fff;color:#141826;border-color:#fff;}
+#menu .langs button:focus-visible{outline:2px solid #8fd0ff;outline-offset:2px;}
+#menu .pick .lock{font:700 10.5px var(--ui-font);color:#ffd76a;text-align:center;}
+#menu .pick.locked canvas{opacity:.5;filter:grayscale(.7);}
+#menu .share{height:44px;border-radius:22px;border:0;background:#2aa3e0;color:#fff;font:800 15px var(--ui-font);cursor:pointer;}
+#menu .share:focus-visible{outline:2px solid #8fd0ff;outline-offset:2px;}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c" aria-label="Baklashka Flip o'yini"></canvas>
+  <button id="snd" type="button" aria-label="Ovozni o‘chirish"></button>
+  <div id="shop">
+    <button id="buy-boost" type="button" disabled aria-label="300 metr yuqoriga uchish, 3 tanga">🚀 +300 m <span class="price"><i></i><b id="boost-price">3</b></span></button>
+    <button id="buy-life" type="button" disabled aria-label="Bitta jon, 2 tanga"><span id="life-label">+1 jon</span> <span class="price"><i></i>2</span></button>
+  </div>
+  <button id="btn-menu" type="button" aria-label="Menyu">
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M5 7h14M5 12h14M5 17h14"/></svg>
+  </button>
+  <div id="menu" role="dialog" aria-modal="true" aria-labelledby="menu-title">
+    <div class="panel">
+      <h1 id="menu-title">Baklashka Flip</h1>
+      <p id="menu-coins" class="coins"></p>
+      <div class="langs" role="group" aria-label="Til / Language">
+        <button type="button" data-lang="uz">O‘zbekcha</button>
+        <button type="button" data-lang="en">English</button>
+      </div>
+      <h2 id="h-bottles">Baklashka</h2>
+      <div class="grid" id="pick-bottle"></div>
+      <h2 id="h-themes">Mavzu</h2>
+      <div class="grid" id="pick-theme"></div>
+      <div class="actions">
+        <button id="btn-play" class="primary" type="button">Yangi o‘yin</button>
+        <button id="btn-resume" type="button" hidden>Davom etish</button>
+      </div>
+      <h2 id="h-board">Reyting</h2>
+      <ol id="lb-list"></ol>
+      <p id="lb-note">Reyting yuklanmoqda…</p>
+      <button id="btn-share" class="share" type="button" hidden>Natijamni do‘stlarga yuborish</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+// ================= Sozlamalar =================
+const W = 420;                 // mantiqiy kenglik
+const PX_PER_M = 10;           // 10 px = 1 metr
+const GRAV = 1800;
+const VMAX = 1150, MAXDRAG = 170;
+let SPIN_K = 0.0115;           // aylanish = tezlik * SPIN_K
+let WATER_DAMP = 8;            // pastga tushayotganda suv aylanishni sekinlatadi
+let RESTORE = 24;              // ... va baklashkani tik holatga tortadi
+let CATCH = 1.4;               // shu burchakdan (rad) yaqin bo'lsa suv "ushlaydi"
+const SIDE_LIMIT = 1.15;       // bundan katta burchak = yonbosh tushdi
+// Baklashka o'lchamlari tanlangan baklashkadan olinadi (applyBottle)
+let BW = 26, BH = 64, CAPW = 12, NECK = 20, SPIN_MUL = 1, WIND_MUL = 1;
+let CRIT_BOTTOM = Math.atan((BW / 2) / 18);
+let CRIT_CAP = Math.atan((CAPW / 2) / 24);
+let LOCAL_PTS = [];
+const TOPPLE_G = 40;
+const PLAT_H = 18;
+const CHECK_EVERY = 100;       // checkpoint har 100 m
+const LIVES = 3;
+const PRICE_LIFE = 2, BOOST_M = 300;   // jon narxi o'zgarmaydi; raketa narxi boostPrice() da
+const TEX_X = 10, TEX_TOP = 14, TEX_BOT = 36;
+
+const ZONES = [
+  { from: 0,   name: 'Yoz',    tag: 'Issiq yoz' },
+  { from: 125, name: 'Kuz',    tag: 'Salqin kuz, toshlar ho‘l' },
+  { from: 230, name: 'Qish',   tag: 'Qor va birinchi muzlar' },
+  { from: 340, name: 'Muzlik', tag: 'Hamma yoq muz, shoshil!' }
+];
+// slide: qo'nishdagi gorizontal tezlikning qancha qismi saqlanadi; fric: sekinlashish; drift: muzning o'zi itarishi
+const SURF = {
+  ground: { slide: 0,    fric: 0 },
+  wood:   { slide: 0,    fric: 0 },
+  stone:  { slide: 0,    fric: 0 },
+  wet:    { slide: 0.45, fric: 2.4 },
+  snow:   { slide: 0,    fric: 0, soft: true },
+  ice:    { slide: 0.6,  fric: 0.5, min: 18, drift: 12 }
+};
+const tempAt = hM => Math.max(-35, Math.round(30 - Math.max(0, hM) * 0.12));
+const zoneAt = hM => { let z = 0; for (let i = 0; i < ZONES.length; i++) if (hM >= ZONES[i].from) z = i; return z; };
+// Shamol (px/s²): yozda deyarli yo'q, kuzda va tepada sezilarli; yo'nalishi sekin almashadi
+const windAt = hM => 55 * [0.15, 1, 0.8, 1.2][zoneAt(hM)] * Math.sin(NOW * 0.11 + 1) * (0.65 + 0.35 * Math.sin(NOW * 0.53));
+// Muzlikda bir joyda shuncha soniya tursang muzlab qolasan (sovuqroq bo'lsa tezroq)
+const freezeLimit = t => clamp(9 + (t + 10) * 0.2, 5, 9);
+
+// Baklashkalar: cmB/cmC = tagi/qopqog'i ustida turganda og'irlik markazi balandligi (kichik = barqaror)
+const BOTTLES = {
+  suv:   { name: 'Suv', note: 'muvozanatli', bw: 26, bh: 64, capw: 12, neck: 20, cmB: 18, cmC: 24, spin: 1,
+           plastic: [110, 160, 200], liquid: ['rgba(110,188,242,.55)', 'rgba(28,102,188,.78)'],
+           label: ['#0c2a52', '#1f5ea8', '#2b78c8', '#0a2344'], cap: ['#0e3b78', '#3c84d8', '#2a6cc0', '#0b2d5e'], logo: 'mountain' },
+  gazli: { name: 'Gazli', note: 'tez aylanadi', bw: 24, bh: 70, capw: 12, neck: 24, cmB: 20, cmC: 26, spin: 1.08,
+           plastic: [80, 160, 95], liquid: ['rgba(255,178,70,.65)', 'rgba(222,104,18,.88)'],
+           label: ['#6d0f12', '#c22a2e', '#e0473f', '#5c0b0e'], cap: ['#6d0f12', '#e0473f', '#c22a2e', '#5c0b0e'], logo: 'bubbles' },
+  katta: { name: 'Katta', note: 'barqaror, sekin', bw: 31, bh: 76, capw: 13, neck: 24, cmB: 19, cmC: 27, spin: 0.9,
+           plastic: [120, 170, 205], liquid: ['rgba(120,195,245,.5)', 'rgba(30,110,195,.75)'],
+           label: ['#0d4a3a', '#1e8a6a', '#2aa77f', '#0a3b2e'], cap: ['#0d4a3a', '#2aa77f', '#1e8a6a', '#0a3b2e'], logo: 'mountain' },
+  sport: { name: 'Sport', note: 'qopqoq bilan oson', bw: 27, bh: 62, capw: 18, neck: 14, cmB: 18, cmC: 22, spin: 1,
+           opaque: ['#4a0f27', '#d63a6e', '#a32554', '#3e0c21'], liquid: null,
+           label: ['#16161a', '#3a3a44', '#4a4a56', '#121216'], cap: ['#18181c', '#5b5b66', '#3c3c45', '#141417'], logo: 'bolt' },
+  // Tangaga sotib olinadiganlar (price). wind = shamolga ta'sirchanlik
+  choynak: { name: 'Choynak', note: 'juda barqaror', kind: 'choynak', price: 15, bw: 36, bh: 46, capw: 10, neck: 12, cmB: 14, cmC: 26, spin: 0.85, wind: 0.6 },
+  koza:    { name: 'Ko‘za', note: 'shamolga chidamli', kind: 'koza', price: 12, bw: 22, bh: 66, capw: 14, neck: 16, cmB: 22, cmC: 26, spin: 1, wind: 0.4 },
+  termos:  { name: 'Termos', note: 'qopqog‘i keng', kind: 'termos', price: 10, bw: 24, bh: 74, capw: 22, neck: 12, cmB: 20, cmC: 26, spin: 1.05, wind: 0.8 }
+};
+// Mavzular: tog' shakli, rang, musiqa ladi va tor ovozining yorqinligi
+const THEMES = {
+  uz: { name: 'O‘zbekiston', far: 'jagged', tint: null, lp: 3400,
+        scale: [293.66, 311.13, 369.99, 392, 440, 466.16, 523.25, 587.33, 622.25, 739.99, 783.99, 880] },
+  cn: { name: 'Xitoy', far: 'karst', tint: [92, 130, 112], lp: 4400,
+        scale: [261.63, 293.66, 329.63, 392, 440, 523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66] },
+  us: { name: 'Amerika', far: 'mesa', tint: [184, 104, 68], lp: 5000,
+        scale: [196, 220, 246.94, 293.66, 329.63, 392, 440, 493.88, 587.33, 659.25, 783.99, 880] },
+  jp: { name: 'Yaponiya', far: 'fuji', tint: [116, 132, 168], lp: 3800,
+        scale: [293.66, 311.13, 392, 440, 466.16, 587.33, 622.25, 783.99, 880, 932.33, 1174.66, 1244.51] },
+  // Tangaga sotib olinadiganlar. Misr: Bayotiy maqomi (chorak tonli), Hindiston: Bhairav ragasi
+  misr: { name: 'Misr', price: 12, far: 'dunes', tint: [206, 164, 104], lp: 3600,
+          scale: [293.66, 320.24, 349.23, 392, 440, 466.16, 523.25, 587.33, 640.5, 698.46, 783.99, 880] },
+  hind: { name: 'Hindiston', price: 12, far: 'jagged', tint: [120, 128, 165], lp: 4200,
+          scale: [261.63, 277.18, 329.63, 349.23, 392, 415.3, 493.88, 523.25, 554.37, 659.25, 698.46, 783.99] }
+};
+
+// Balandlikka qarab osmon, tog'lar va bulutlar rangi
+const ENV = [
+  { h: 0,   top: [58, 132, 206], bot: [208, 233, 246], sun: [255, 246, 222], sunA: 1,    far: [128, 152, 184], mid: [74, 108, 92],   near: [80, 132, 64],   snow: 0.12, cloud: 1 },
+  { h: 160, top: [88, 116, 158], bot: [242, 208, 170], sun: [255, 214, 160], sunA: 0.9,  far: [146, 142, 160], mid: [124, 98, 72],  near: [170, 112, 50],  snow: 0.3,  cloud: 1 },
+  { h: 285, top: [100, 114, 134], bot: [212, 218, 226], sun: [242, 246, 252], sunA: 0.45, far: [150, 160, 178], mid: [124, 132, 146], near: [208, 216, 226], snow: 0.62, cloud: 0.85 },
+  { h: 430, top: [22, 42, 78],   bot: [176, 206, 230], sun: [236, 246, 255], sunA: 0.85, far: [118, 144, 176], mid: [158, 178, 204], near: [226, 236, 246], snow: 0.88, cloud: 0.5 }
+];
+
+// Mumtoz o'zbek adabiyotidan maqtov so'zlari: [so'z, qisqa izoh]
+const PRAISE = [
+  'Ofarin!',
+  'Tasanno!',
+  'Tahsin!',
+  'Marhabo!',
+  'Balli, azamat!',
+  'Barakalla!',
+  'Yuz ofarin!',
+  'Ming tahsin!',
+  'Alif qaddingdek tik!',
+  'Sarvi ravondek!',
+  'Sarvqomat!',
+  'Shunqordek qo‘nding!',
+  'Humo qushidek!',
+  'Iqboling kuldi!',
+  'Tole’ing baland!',
+  'Durri yakto!',
+  'Gavhari noyob!',
+  'Ajab hunar!',
+  'Hunaring ziyoda bo‘lg‘ay!',
+  'Sohibkamol!',
+  'Farzona!',
+  'Mumtoz ish!',
+  'Pahlavon!',
+  'Bahodir!',
+  'Alpomishdek!',
+  'Rustami dostondek!',
+  'Farhoddek tog‘ yording!',
+  'Ko‘ngil mulkining sultoni!',
+  'Dilni shod etding!',
+  'Ko‘zlarim ravshan!',
+  'Davlating ziyoda bo‘lsin!',
+  'Mashaolloh!',
+  'Qo‘ling dard ko‘rmasin!',
+  'Ofarinlar bo‘lsin!',
+  'Ziyrak!',
+  'Sohibqirondek!',
+  'Navoiy g‘azal bitardi!',
+  'Bobur ham qoyil qolardi!',
+  'Mard maydonda sinalur!',
+  'Hunar hunardan unar!',
+  'Oftobdek charaqlading!',
+  'Lochin ko‘zli mergan!'
+];
+const PRAISE_CAP = [
+  'Karomat ko‘rsatding!',
+  'Dorbozdek!',
+  'Tilsim ochildi!',
+  'Ajoyib-g‘aroyib!',
+  'Bu ne mo‘jiza!',
+  'Ming bir kecha mo‘jizasi!',
+  'Nasriddin Afandi ham hayron!',
+  'Qopqoq uzra sulton!'
+];
+function makeBag(list) {
+  let bag = [], last = null;
+  return () => {
+    if (!bag.length) {
+      bag = list.slice();
+      for (let i = bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [bag[i], bag[j]] = [bag[j], bag[i]]; }
+      if (bag[bag.length - 1] === last && bag.length > 1) [bag[0], bag[bag.length - 1]] = [bag[bag.length - 1], bag[0]];
+    }
+    last = bag.pop();
+    return last;
+  };
+}
+// Platformada yiqilganda: afsus
+const AFSUS = [
+  'Dariqo!',
+  'Vohki!',
+  'Hayhot!',
+  'Ming afsus!',
+  'Attang!',
+  'Alif dol bo‘ldi!',
+  'Sarv ham egildi!',
+  'Bag‘rim kuydi!',
+  'Charxi kajraftor!',
+  'Bevafo falak!',
+  'Ko‘ngil vayron!',
+  'Gul so‘ldi…',
+  'Ko‘z yoshim sel bo‘ldi!',
+  'Hijron alami!',
+  'Mushkul ekan…',
+  'Sabr tagi – sariq oltin!',
+  'To‘rt oyoqli ot ham qoqilar!',
+  'Yiqilgan kurashga to‘ymas!',
+  'Dil xasta…',
+  'Qismat ekan…'
+];
+// Pastga qulab ketganda: dakki
+const DAKKI = [
+  'Ey g‘ofil!',
+  'Ey bexabar!',
+  'Hovliqma!',
+  'Beandisha!',
+  'Tadbirsiz!',
+  'Yetti o‘lchab, bir kes!',
+  'Shoshgan ish – shayton ishi!',
+  'Ko‘rpangga qarab oyoq uzat!',
+  'Ko‘zguda ayb yo‘q, yuzing qiyshiq!',
+  'Osmondan tushgandek bo‘lding!',
+  'Shuncha mehnat sovurildi!',
+  'Tog‘dan qulagan toshdek!',
+  'Kibr yerga uradi!',
+  'Aql ko‘zingni och!',
+  'Hoy nodon!'
+];
+// Inglizcha: eski adabiy (Shekspir davri) uslubida
+const PRAISE_EN = [
+  'Bravo!', 'Huzzah!', 'Splendid!', 'Magnificent!', 'Most excellent!', 'Well landed!', 'Thou art nimble!',
+  'A feat for the ages!', 'Glorious!', 'Sublime!', 'Upright as a cypress!', 'Like a falcon!', 'Fortune smiles upon thee!',
+  'A pearl beyond price!', 'Masterful!', 'Bravely done!', 'Hark, a champion!', 'Worthy of a sonnet!',
+  'The bards shall sing of this!', 'Marvellous!', 'Steady as the mountains!', 'Lo, perfection!', 'Admirable!',
+  'Exquisite!', 'Valiant!', 'Thy hand is true!', 'By my troth, superb!', 'A noble flip!', 'Nobly done!',
+  'A triumph!', 'Fortune favours the bold!', 'Shining like the sun!', 'Hail the hero!'
+];
+const CAP_EN = ['A miracle!', 'Sorcery!', 'Upon thy very crown!', 'Wonder of wonders!', 'Like a tightrope walker!', 'The heavens marvel!', 'Witchcraft, surely!', 'Topsy-turvy triumph!'];
+const SAD_EN = [
+  'Alas!', 'Woe is me!', 'Alack!', 'O cruel fate!', 'Fortune is fickle!', 'So close, alas!', 'Lamentable!', 'The cypress bends…',
+  'Pity, pity!', 'Even horses stumble!', 'Patience is golden!', 'Rise and try again!', 'Heavy is my heart…', 'A fall from grace…',
+  'Thus fate decrees…', 'Tears like rain!', 'O misfortune!', 'The rose has wilted…', 'Courage, try anew!', 'Such is life…'
+];
+const SCOLD_EN = [
+  'Fie upon thee!', 'Thou heedless one!', 'Haste makes waste!', 'Look before thou leap!', 'Measure twice, cut once!',
+  'Pride goeth before a fall!', 'Thou hasty fool!', 'Mind thy footing!', 'Rash and reckless!', 'Such toil, all for naught!',
+  'Fallen like a stone!', 'Have a care, knave!', 'Prudence, prithee!', 'Thy wits have flown!', 'Cut thy coat to thy cloth!'
+];
+const WORDS = {
+  uz: { praise: PRAISE, cap: PRAISE_CAP, sad: AFSUS, scold: DAKKI },
+  en: { praise: PRAISE_EN, cap: CAP_EN, sad: SAD_EN, scold: SCOLD_EN }
+};
+const wordBags = {};
+// Har bir til va tur uchun alohida "xalta": hammasi chiqmaguncha takrorlanmaydi
+const nextWord = kind => (wordBags[lang + kind] ||= makeBag(WORDS[lang][kind]))();
+
+// ================= Asosiy o'zgaruvchilar =================
+const wrapEl = document.getElementById('wrap');
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let H = 760, scale = 1, dpr = 1, texScale = 2;
+let VX = 0, VY = 0, NOW = 0;
+
+const store = (k, v) => {
+  try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) {}
+  return null;
+};
+let best = parseInt(store('bflip_best') || '0', 10) || 0;
+
+// ================= Til: o'zbekcha / inglizcha =================
+const LANGS = ['uz', 'en'];
+let lang = (() => {
+  const s = store('bflip_lang');
+  if (LANGS.includes(s)) return s;
+  try { const tl = window.Telegram.WebApp.initDataUnsafe.user.language_code; if (tl && tl.startsWith('en')) return 'en'; } catch (e) {}
+  return 'uz';
+})();
+const STR = {
+  uz: {
+    game: 'Baklashka Flip o‘yini', record: n => `Rekord: ${n} m`, nextCp: n => `🚩 keyingi: ${n} m`, wind: 'shamol',
+    hint: 'Orqaga tortib, qo‘yib yubor', training: 'Mashq maydoni · 0 m da jon ketmaydi',
+    overTitle: 'Jonlar tugadi', overCp: n => `Checkpoint: ${n} m dan davom etasan`, overTap: 'Davom etish uchun bos',
+    overLife: 'yoki pastdagi «+1 jon» bilan shu yerdan davom et',
+    slid: 'Toyib ketdi!', trainSaved: 'Mashq: jon saqlandi', coin: '+1 tanga', gold: '+3 tilla', lifePlus: '+1 jon',
+    frozen: 'Muzlab qolding!', frozeBack: 'Checkpoint’ga qaytding · jon saqlandi',
+    sndOn: 'Ovozni yoqish', sndOff: 'Ovozni o‘chirish', menu: 'Menyu', boostAria: p => `300 metr yuqoriga uchish, ${p} tanga`,
+    lifeBtn: '+1 jon', lifeAria: 'Bitta jon, 2 tanga',
+    coinsHave: n => `Tangalaring: ${n}`, bottles: 'Baklashka', themes: 'Mavzu', newGame: 'Yangi o‘yin', resume: 'Davom etish', board: 'Reyting',
+    price: n => `🔒 ${n} tanga`, tapBuy: 'Sotib olish uchun yana bos', needMore: n => `Yana ${n} tanga kerak`, priceAria: (nm, n) => `${nm}, ${n} tanga`,
+    share: 'Natijamni do‘stlarga yuborish', shareText: n => `Baklashka Flip o‘yinida ${n} m balandlikka chiqdim! Sen qancha chiqa olasan?`,
+    copied: 'Nusxalandi: endi xohlagan joyingga joylashtir.', you: 'Sen', player: 'O‘yinchi',
+    lbLoading: 'Reyting yuklanmoqda…', lbEmpty: 'Hali hech kim yo‘q. Birinchi bo‘l!',
+    lbReadonly: 'Sening natijang bu yerga yozilmaydi: buning uchun o‘yin egasi seni muharrir (Editor) qilib taklif qilishi kerak.',
+    lbShare: 'Natijangni do‘stlaringga yubor: kim balandroq chiqarkan?', lbSignin: 'Reyting uchun claude.ai hisobingga kirgan holda och.',
+    lbSlow: 'Reyting hozircha yuklanmadi. Internetni tekshirib ko‘r.', lbLost: 'Reyting bilan aloqa uzildi.', lbFail: 'Reyting ochilmadi.',
+    zones: [['Yoz', 'Issiq yoz'], ['Kuz', 'Salqin kuz, toshlar ho‘l'], ['Qish', 'Qor va birinchi muzlar'], ['Muzlik', 'Hamma yoq muz, shoshil!']]
+  },
+  en: {
+    game: 'Baklashka Flip game', record: n => `Best: ${n} m`, nextCp: n => `🚩 next: ${n} m`, wind: 'wind',
+    hint: 'Pull back, then let go', training: 'Practice zone · no lives lost at 0 m',
+    overTitle: 'Out of lives', overCp: n => `You'll continue from the ${n} m checkpoint`, overTap: 'Tap to continue',
+    overLife: 'or use «+1 life» below to carry on right here',
+    slid: 'Slipped off!', trainSaved: 'Practice: life kept', coin: '+1 coin', gold: '+3 gold', lifePlus: '+1 life',
+    frozen: 'Frozen solid!', frozeBack: 'Back to the checkpoint · no life lost',
+    sndOn: 'Turn sound on', sndOff: 'Turn sound off', menu: 'Menu', boostAria: p => `Fly 300 metres up, ${p} coins`,
+    lifeBtn: '+1 life', lifeAria: 'One life, 2 coins',
+    coinsHave: n => `Your coins: ${n}`, bottles: 'Bottle', themes: 'Theme', newGame: 'New game', resume: 'Resume', board: 'Leaderboard',
+    price: n => `🔒 ${n} coins`, tapBuy: 'Tap again to buy', needMore: n => `${n} more coins needed`, priceAria: (nm, n) => `${nm}, ${n} coins`,
+    share: 'Send my score to friends', shareText: n => `I climbed ${n} m in Baklashka Flip! How high can you go?`,
+    copied: 'Copied. Paste it anywhere you like.', you: 'You', player: 'Player',
+    lbLoading: 'Loading the leaderboard…', lbEmpty: 'No one here yet. Be the first!',
+    lbReadonly: 'Your score won’t be saved here: the game’s owner has to invite you as an Editor.',
+    lbShare: 'Send your score to friends and see who climbs higher!', lbSignin: 'Open the game while signed in to claude.ai to see the leaderboard.',
+    lbSlow: 'The leaderboard hasn’t loaded yet. Check your internet.', lbLost: 'Lost connection to the leaderboard.', lbFail: 'The leaderboard couldn’t open.',
+    zones: [['Summer', 'Hot summer'], ['Autumn', 'Cool autumn, wet rocks'], ['Winter', 'Snow and the first ice'], ['Glacier', 'Ice everywhere, hurry!']]
+  }
+};
+const tr = (key, ...a) => { const v = STR[lang][key]; return typeof v === 'function' ? v(...a) : v; };
+const zoneName = i => STR[lang].zones[i][0], zoneTag = i => STR[lang].zones[i][1];
+// Baklashka va mavzularning inglizcha nomlari (o'zbekchasi BOTTLES/THEMES ichida)
+const ITEM_EN = {
+  suv: ['Water', 'balanced'], gazli: ['Soda', 'spins faster'], katta: ['Big', 'steady, slower'], sport: ['Sport', 'easy cap landings'],
+  choynak: ['Teapot', 'very steady'], koza: ['Clay jug', 'wind-proof'], termos: ['Thermos', 'wide lid'],
+  uz: ['Uzbekistan'], cn: ['China'], us: ['America'], jp: ['Japan'], misr: ['Egypt'], hind: ['India']
+};
+const itemName = k => (lang === 'en' ? ITEM_EN[k][0] : (BOTTLES[k] || THEMES[k]).name);
+const itemNote = k => (lang === 'en' ? ITEM_EN[k][1] || '' : (BOTTLES[k] || {}).note || '');
+
+// ================= Telegram Mini App =================
+// Telegram ichida ochilganda: to'liq ekran, pastga surib yopilmasin, tebranish (haptic). Boshqa joyda hech narsa qilmaydi.
+const SHARE_URL = "";   // Telegram bot havolasi (masalan https://t.me/BotNomi/app); bo'sh bo'lsa sahifa manzili ulashiladi
+const TG = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData ? window.Telegram.WebApp : null;
+if (TG) {
+  try {
+    TG.ready(); TG.expand();
+    if (TG.isVersionAtLeast('7.7')) TG.disableVerticalSwipes();   // aks holda pastga tortish ilovani yopib yuboradi
+    if (TG.isVersionAtLeast('6.1')) { TG.setHeaderColor('#0d1015'); TG.setBackgroundColor('#0d1015'); }
+  } catch (e) {}
+}
+function haptic(kind) {
+  try {
+    if (!TG || !TG.HapticFeedback || !TG.isVersionAtLeast('6.1')) return;
+    if (kind === 'success' || kind === 'error' || kind === 'warning') TG.HapticFeedback.notificationOccurred(kind);
+    else TG.HapticFeedback.impactOccurred(kind);
+  } catch (e) {}
+}
+
+const rnd = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const wrapA = a => { a = (a + Math.PI) % (2 * Math.PI); if (a < 0) a += 2 * Math.PI; return a - Math.PI; };
+const hash = i => { const s = Math.sin(i * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
+function rng(seed) {
+  let a = seed >>> 0;
+  return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+const rgb = (c, a = 1) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
+const shadeC = (c, f) => f >= 0 ? c.map(v => v + (255 - v) * f) : c.map(v => v * (1 + f));
+function envAt(h) {
+  let i = 0;
+  while (i < ENV.length - 2 && h > ENV[i + 1].h) i++;
+  const A = ENV[i], B = ENV[i + 1];
+  let t = clamp((h - A.h) / (B.h - A.h), 0, 1); t = t * t * (3 - 2 * t);
+  const o = {};
+  for (const k in A) o[k] = Array.isArray(A[k]) ? A[k].map((v, j) => v + (B[k][j] - v) * t) : A[k] + (B[k] - A[k]) * t;
+  return o;
+}
+
+// ================= O'yin holati =================
+let platforms = [], genY = 0, genX = W / 2, nextCp = 1;
+let lives = LIVES, stars = 0, maxH = 0, checkpoint = null, lastStand = null, zoneReached = 0;
+let camY = 0, camTarget = 0, prevCamY = 0, shake = 0;
+let particles = [], popups = [], praise = null, banner = null;
+let over = false, hint = true, aim = null, testing = false;
+let coins = parseInt(store('bflip_coins') || '0', 10) || 0, coinGap = 3;
+// Sotib olingan baklashka va mavzular (narxi yo'qlari bepul)
+const owned = new Set((() => { try { return JSON.parse(store('bflip_owned') || '[]'); } catch (e) { return []; } })());
+const priceOf = k => ((BOTTLES[k] || THEMES[k] || {}).price) || 0;
+const isOwned = k => !priceOf(k) || owned.has(k);
+const okKey = (map, k, def) => (map[k] && isOwned(k) ? k : def);
+let bottleKey = okKey(BOTTLES, store('bflip_bottle'), 'suv');
+let themeKey = okKey(THEMES, store('bflip_theme'), 'uz');
+let windNow = 0, freezeT = 0, menuOpen = true;
+const b = { x: 0, y: 0, angle: 0, vx: 0, vy: 0, omega: 0, state: 'stand', plat: null, end: 'bottom',
+            pivotX: 0, pivotY: 0, phi: 0, phiDot: 0, timer: 0, fromA: 0, toA: 0, fromY: 0,
+            ignore: null, ignoreT: 0, slideV: 0, landPhi: 0 };
+
+function makePlatform(x, y, w, type) {
+  const hM = -y / PX_PER_M;
+  const p = { x, y, w, type, seed: (Math.random() * 1e9) | 0, tex: null, texScale: 0, cp: 0, active: false,
+              base: Math.random() < 0.5 ? 'wood' : 'stone', drift: 0,
+              moss: type === 'stone' && hM < 140 && Math.random() < 0.6 };
+  if (type === 'ice') p.drift = (Math.random() < 0.5 ? -1 : 1) * SURF.ice.drift * rnd(0.7, 1.2);
+  platforms.push(p);
+  return p;
+}
+
+function pickType(hM) {
+  const r = Math.random();
+  if (hM < 125) return r < 0.55 ? 'wood' : 'stone';
+  if (hM < 230) return r < 0.35 ? 'wood' : r < 0.65 ? 'stone' : 'wet';
+  if (hM < 340) return r < 0.4 ? 'snow' : r < 0.6 ? 'stone' : 'ice';
+  return r < 0.65 ? 'ice' : r < 0.9 ? 'snow' : 'stone';
+}
+
+function generateUpTo(targetY) {
+  while (genY > targetY) {
+    const hM = -genY / PX_PER_M;
+    const diff = Math.min(1, hM / 400);
+    let y = genY - (rnd(100, 130) + diff * rnd(0, 40));
+    const cpY = -nextCp * CHECK_EVERY * PX_PER_M;
+    if (y <= cpY + 30) {
+      y = Math.min(cpY, genY - 90);
+      const w = 170;
+      const cx = clamp(W / 2 + rnd(-70, 70), w / 2 + 10, W - w / 2 - 10);
+      const p = makePlatform(cx - w / 2, y, w, -y / PX_PER_M < 230 ? 'stone' : 'snow');
+      p.base = 'stone'; p.moss = false; p.cp = nextCp;
+      nextCp++; genY = y; genX = cx;
+      continue;
+    }
+    const type = pickType(-y / PX_PER_M);
+    const w = rnd(88, 132) - diff * 28 + (type === 'ice' ? 14 : 0);
+    const dir = Math.random() < 0.5 ? -1 : 1;
+    let cx = genX + dir * rnd(50, 185);
+    if (cx < w / 2 + 12 || cx > W - w / 2 - 12) cx = genX - dir * rnd(50, 185);
+    cx = clamp(cx, w / 2 + 12, W - w / 2 - 12);
+    const p = makePlatform(cx - w / 2, y, w, type);
+    if (--coinGap <= 0) {  // har 3-4 qavatda bitta tanga; 15% hollarda oltin tilla (3 tanga)
+      p.coin = { x: p.x + p.w * rnd(0.3, 0.7), y: p.y - 32, v: Math.random() < 0.15 ? 3 : 1, taken: false };
+      coinGap = Math.random() < 0.5 ? 3 : 4;
+    }
+    genY = y; genX = cx;
+  }
+}
+
+function newGame() {
+  platforms = []; particles = []; popups = []; praise = null;
+  const g = makePlatform(-60, 0, W + 120, 'ground');
+  g.active = true;
+  genY = 0; genX = W / 2; nextCp = 1; coinGap = 3;
+  lives = LIVES; stars = 0; maxH = 0; checkpoint = g; over = false; aim = null; zoneReached = 0;
+  placeStanding(g, W / 2, 'bottom');
+  lastStand = { p: g, x: W / 2 };
+  camY = camTarget = prevCamY = g.y - H * 0.72;
+  generateUpTo(camY - H * 1.5);
+  banner = { title: zoneName(0), sub: `+${tempAt(0)}°C · ${zoneTag(0)}`, t: -0.4 };
+}
+
+// ================= Baklashka fizikasi =================
+function centerFromPivot() {
+  const ly = (b.end === 'bottom' ? 1 : -1) * BH / 2;
+  b.x = b.pivotX + ly * Math.sin(b.angle);
+  b.y = b.pivotY - ly * Math.cos(b.angle);
+}
+
+function placeStanding(p, x, end) {
+  b.state = 'stand'; b.plat = p; b.end = end;
+  b.pivotX = clamp(x, p.x + BW / 2, p.x + p.w - BW / 2); b.pivotY = p.y;
+  b.phi = 0; b.phiDot = 0; b.vx = b.vy = b.omega = 0; b.ignore = null; b.slideV = 0;
+  b.angle = end === 'bottom' ? 0 : Math.PI;
+  centerFromPivot();
+}
+
+function applyBottle(k) {
+  if (!BOTTLES[k]) k = 'suv';
+  const v = BOTTLES[k];
+  bottleKey = k; store('bflip_bottle', k);
+  BW = v.bw; BH = v.bh; CAPW = v.capw; NECK = v.neck; SPIN_MUL = v.spin; WIND_MUL = v.wind ?? 1;
+  CRIT_BOTTOM = Math.atan((BW / 2) / v.cmB); CRIT_CAP = Math.atan((CAPW / 2) / v.cmC);
+  LOCAL_PTS = [[-BW / 2, BH / 2], [BW / 2, BH / 2], [-BW / 2, -BH / 2 + NECK], [BW / 2, -BH / 2 + NECK], [-CAPW / 2, -BH / 2], [CAPW / 2, -BH / 2]];
+}
+// Eng pastki nuqta va shu balandlikdagi qismning chap/o'ng chegarasi: [x0, x1, y]
+function lowestPoint() {
+  const c = Math.cos(b.angle), s = Math.sin(b.angle);
+  const pts = LOCAL_PTS.map(([lx, ly]) => [b.x + lx * c - ly * s, b.y + lx * s + ly * c]);
+  let by = -Infinity;
+  for (const p of pts) if (p[1] > by) by = p[1];
+  let x0 = Infinity, x1 = -Infinity;
+  for (const p of pts) if (p[1] >= by - 2) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); }
+  return [x0, x1, by];
+}
+
+function launchVec(a) {
+  let dx = a.sx - a.cx, dy = a.sy - a.cy;
+  const len = Math.hypot(dx, dy);
+  if (len < 14) return null;
+  const L = Math.min(len, MAXDRAG);
+  dx *= L / len; dy *= L / len;
+  const vx = dx / MAXDRAG * VMAX, vy = dy / MAXDRAG * VMAX;
+  if (vy > -150) return null;
+  return { vx, vy, power: L / MAXDRAG };
+}
+
+function launch(vx, vy) {
+  if (b.state !== 'stand') return false;
+  b.state = 'fly';
+  b.vx = vx + b.slideV; b.vy = vy; b.slideV = 0;
+  b.omega = (vx >= 0 ? 1 : -1) * Math.hypot(vx, vy) * SPIN_K * SPIN_MUL;
+  b.ignore = null;
+  hint = false;
+  return true;
+}
+
+function stepFly(dt) {
+  const prevLow = lowestPoint()[2];
+  b.vy += GRAV * dt;
+  if (!testing) b.vx += windNow * WIND_MUL * dt;
+  b.x += b.vx * dt; b.y += b.vy * dt;
+  if (b.vy > 0) {
+    const a = wrapA(b.angle);
+    if (Math.abs(a) < CATCH) {
+      b.omega *= Math.exp(-WATER_DAMP * dt);
+      b.omega -= Math.sin(a) * RESTORE * dt;
+    }
+  }
+  b.angle += b.omega * dt;
+  const m = BW / 2 + 2;
+  if (b.x < m && b.vx < 0) { b.x = m; b.vx *= -0.45; b.omega *= 0.7; }
+  if (b.x > W - m && b.vx > 0) { b.x = W - m; b.vx *= -0.45; b.omega *= 0.7; }
+  if (b.ignoreT > 0) { b.ignoreT -= dt; if (b.ignoreT <= 0) b.ignore = null; }
+  if (b.vy > 0) {
+    const [x0, x1, ly] = lowestPoint();
+    for (const p of platforms) {
+      if (p === b.ignore) continue;
+      if (prevLow <= p.y + 0.5 && ly >= p.y && x1 >= p.x && x0 <= p.x + p.w) { land(p, clamp((x0 + x1) / 2, p.x, p.x + p.w)); return; }
+    }
+  }
+  if (b.y - BH > camY + H + 40) loseLife('Tushib ketdi!');
+}
+
+function land(p, contactX) {
+  const s = SURF[p.type];
+  const a = wrapA(b.angle);
+  let end, phi;
+  if (Math.abs(a) <= Math.PI / 2) { end = 'bottom'; phi = a; } else { end = 'cap'; phi = wrapA(a - Math.PI); }
+  const ly = (end === 'bottom' ? 1 : -1) * BH / 2;
+  const baseX = b.x - ly * Math.sin(b.angle);
+  const impact = b.vy;
+  if (Math.abs(phi) > SIDE_LIMIT) { fallOver(p); return; }
+  if (baseX < p.x - 3 || baseX > p.x + p.w + 3) {
+    // tagi platformadan chiqib qoldi — chetidan ag'darilib tushadi
+    const out = baseX < p.x ? -1 : 1;
+    b.ignore = p; b.ignoreT = 0.6;
+    b.vx = out * 140; b.vy = -160; b.omega = out * 7;
+    landFx(p, contactX, 0.5);
+    Snd.land(p.type, impact * 0.6, end);
+    return;
+  }
+  let sv = b.vx * (s.slide || 0);
+  if (s.min && Math.abs(sv) < s.min) sv = (Math.sign(b.vx) || Math.sign(p.drift) || 1) * s.min;
+  b.state = 'pivot'; b.plat = p; b.end = end; b.phi = phi;
+  b.phiDot = b.omega * (s.soft ? 0.12 : 0.22);
+  b.landPhi = Math.abs(phi);
+  b.slideV = clamp(sv, -260, 260);
+  b.pivotX = baseX; b.pivotY = p.y;
+  b.vx = b.vy = b.omega = 0;
+  b.angle = (end === 'bottom' ? 0 : Math.PI) + phi;
+  centerFromPivot();
+  if (!testing) { landFx(p, baseX, 1); shake = Math.min(5, impact / 260); Snd.land(p.type, impact, end); haptic(impact > 900 ? 'medium' : 'light'); }
+}
+
+// Muz va ho'l toshda sirpanish. Platformadan chiqib ketsa true qaytaradi.
+function slideStep(dt) {
+  const p = b.plat, s = SURF[p.type];
+  if (p.drift) b.slideV += p.drift * dt;
+  if (!b.slideV) return false;
+  b.pivotX += b.slideV * dt;
+  if (s.fric) b.slideV *= Math.exp(-s.fric * dt);
+  if (!p.drift && Math.abs(b.slideV) < 2) b.slideV = 0;
+  b.slideV = clamp(b.slideV, -280, 280);
+  if (b.pivotX < p.x - 2 || b.pivotX > p.x + p.w + 2) { slideOff(p); return true; }
+  return false;
+}
+
+function slideOff(p) {
+  const out = b.pivotX < p.x ? -1 : 1;
+  b.state = 'fly'; b.ignore = p; b.ignoreT = 0.6; aim = null;
+  b.vx = b.slideV * 0.9 + out * 40; b.vy = -30; b.omega = out * 5.5; b.slideV = 0;
+  if (!testing) { popup(tr('slid'), b.x, p.y - 70, '#9fd8ff', 20); Snd.slideOff(); }
+}
+
+function stepPivot(dt) {
+  const s = SURF[b.plat.type];
+  const crit = (b.end === 'bottom' ? CRIT_BOTTOM : CRIT_CAP) * (s.soft ? 1.15 : 1);
+  const sg = b.phi !== 0 ? Math.sign(b.phi) : (Math.sign(b.phiDot) || 1);
+  b.phiDot += TOPPLE_G * Math.sin(Math.abs(b.phi) - crit) * sg * dt;
+  b.phiDot *= Math.exp(-(s.soft ? 4 : 2.2) * dt);
+  const prev = b.phi;
+  b.phi += b.phiDot * dt;
+  if (prev !== 0 && Math.sign(prev) !== Math.sign(b.phi)) { Snd.wobble(Math.abs(b.phiDot)); b.phiDot *= 0.4; }
+  b.angle = (b.end === 'bottom' ? 0 : Math.PI) + b.phi;
+  if (slideStep(dt)) return;
+  centerFromPivot();
+  if (Math.abs(b.phi) > 1.2) { fallOver(b.plat); return; }
+  if (Math.abs(b.phi) < 0.02 && Math.abs(b.phiDot) < 0.5) settle();
+}
+
+function stepStand(dt) {
+  if (slideStep(dt)) return;
+  centerFromPivot();
+}
+
+// Qo'nib chayqalayotgan baklashka yiqilmaydigan holatdami: shunda to'xtashini kutmasdan sakrash mumkin
+function steadyEnough() {
+  const crit = (b.end === 'bottom' ? CRIT_BOTTOM : CRIT_CAP) * (SURF[b.plat.type].soft ? 1.15 : 1);
+  return Math.abs(b.phi + b.phiDot * 0.12) < crit * 0.9;
+}
+
+function settle() {
+  const p = b.plat;
+  b.phi = 0; b.phiDot = 0; b.state = 'stand';
+  b.angle = b.end === 'bottom' ? 0 : Math.PI;
+  centerFromPivot();
+  if (testing) return;
+  lastStand = { p, x: b.pivotX };
+  const h = Math.round(-p.y / PX_PER_M);
+  if (b.end === 'cap') { stars++; sayPraise(nextWord('cap'), true, true); burst(b.pivotX, p.y - 30, 'gold', 18); }
+  else sayPraise(nextWord('praise'), b.landPhi < 0.12);
+  if (h > maxH) {
+    popup('+' + (h - maxH) + ' m', b.x, p.y - 84, '#ffffff', 18);
+    maxH = h;
+    if (maxH > best) { best = maxH; store('bflip_best', String(best)); }
+  }
+  submitScore(best);
+  if (p.cp && !p.active) {
+    p.active = true; checkpoint = p;
+    popup('🚩 Checkpoint ' + p.cp * CHECK_EVERY + ' m', W / 2, p.y - 120, '#8dff7a', 19);
+    Snd.checkpoint();
+  }
+  const zi = zoneAt(h);
+  if (zi > zoneReached) {
+    zoneReached = zi;
+    const t = tempAt(h);
+    banner = { title: zoneName(zi), sub: `${t > 0 ? '+' : t < 0 ? '−' : ''}${Math.abs(t)}°C · ${zoneTag(zi)}`, t: 0 };
+    Snd.zone(zi);
+  }
+}
+
+// kind: 'sad' (yiqildi) yoki 'scold' (qulab ketdi)
+function sayWoe(item, kind) { praise = { w: item, kind, t: 0 }; }
+
+function sayPraise(item, gold, cap) {
+  praise = { w: item, kind: gold ? 'gold' : 'plain', t: 0 };
+  Snd.praise(gold, cap);
+  if (gold) haptic('success');
+  if (gold) burst(W / 2, camY + H * 0.3 - 14, 'gold', 10);
+}
+
+function fallOver(p) {
+  b.state = 'fallen'; b.plat = p; b.timer = 0; aim = null;
+  b.fromA = b.angle;
+  b.toA = Math.PI / 2 + Math.round((b.angle - Math.PI / 2) / Math.PI) * Math.PI;
+  b.fromY = b.y;
+  b.vx = b.vy = b.omega = 0; b.slideV = 0;
+  if (testing) return;
+  landFx(p, b.x, 1.2); shake = 4;
+  Snd.fall(p.type); haptic('error');
+  sayWoe(nextWord('sad'), 'sad');
+}
+
+function stepFallen(dt) {
+  b.timer += dt;
+  const t = Math.min(1, b.timer / 0.22), e = 1 - (1 - t) * (1 - t);
+  b.angle = lerp(b.fromA, b.toA, e);
+  b.y = lerp(b.fromY, b.plat.y - BW / 2, e);
+  if (b.timer > 1.0) loseLife(null);
+}
+
+function loseLife(msg) {
+  if (testing) { b.state = 'lost'; return; }
+  aim = null;
+  if (msg) { sayWoe(nextWord('scold'), 'scold'); Snd.dropAway(); }
+  // 0 m — mashq maydoni: bu yerda jon ketmaydi
+  const onGround = b.state === 'fallen' && b.plat && b.plat.type === 'ground';
+  if (onGround || lastStand.p.type === 'ground') {
+    const g = platforms[0];
+    placeStanding(g, onGround ? b.x : lastStand.x, 'bottom');
+    lastStand = { p: g, x: b.pivotX };
+    popup(tr('trainSaved'), W / 2, g.y - 110, '#bfe6ff', 17);
+    respawnFx();
+    return;
+  }
+  lives--;
+  if (lives > 0) {
+    const p = lastStand.p;
+    placeStanding(p, p.type === 'ice' ? p.x + p.w / 2 : lastStand.x, 'bottom');
+    respawnFx();
+  } else {
+    over = true; b.state = 'over';
+    Snd.over();
+  }
+}
+
+function continueFromCheckpoint() {
+  over = false; lives = LIVES;
+  const p = checkpoint;
+  placeStanding(p, p.x + p.w / 2, 'bottom');
+  lastStand = { p, x: b.pivotX };
+  respawnFx();
+}
+
+// ================= Tangalar va xaridlar =================
+function spend(n) { coins -= n; store('bflip_coins', String(coins)); }
+
+function collectCoins() {
+  const s = Math.sin(b.angle), c = Math.cos(b.angle), L = BH / 2 - 6;
+  for (const p of platforms) {
+    const k = p.coin;
+    if (!k || k.taken || Math.abs(k.y - b.y) > 70) continue;
+    // tangadan baklashka o'qigacha (tagidan qopqog'igacha) eng yaqin masofa
+    const u = clamp((k.x - b.x) * s - (k.y - b.y) * c, -L, L);
+    if (Math.hypot(k.x - (b.x + u * s), k.y - (b.y - u * c)) > 20) continue;
+    k.taken = true; coins += k.v; store('bflip_coins', String(coins));
+    burst(k.x, k.y, 'gold', k.v > 1 ? 16 : 9);
+    popup(tr(k.v > 1 ? 'gold' : 'coin'), k.x, k.y - 24, '#ffd76a', 16);
+    Snd.coin(k.v); haptic('light');
+  }
+}
+
+// Raketa narxi: 100 m gacha 3 tanga, keyin har 300 m da 1 tanga qimmatroq (100–399 m: 4, 400–699 m: 5, ...)
+function boostPrice() {
+  const h = Math.max(0, Math.round(-lastStand.p.y / PX_PER_M));
+  return h < 100 ? 3 : 4 + Math.floor((h - 100) / 300);
+}
+
+// Muzlikda uzoq tursa: jon ketmaydi, checkpoint'ga qaytadi
+function updateFreeze(dt) {
+  const t = tempAt(Math.max(0, -b.y / PX_PER_M));
+  if ((b.state === 'stand' || b.state === 'pivot') && t < -10) {
+    freezeT += dt;
+    if (freezeT >= freezeLimit(t)) freezeOut();
+  } else freezeT = 0;
+}
+function freezeOut() {
+  freezeT = 0;
+  for (let i = 0; i < 16; i++) particles.push({ x: b.x + rnd(-10, 10), y: b.y + rnd(-25, 25), vx: rnd(-120, 120), vy: rnd(-160, 20), life: 0, max: rnd(0.4, 0.8), size: rnd(1.5, 3), kind: 'ice' });
+  praise = { w: tr('frozen'), kind: 'sad', t: 0 };
+  Snd.freeze();
+  const p = checkpoint;
+  placeStanding(p, p.x + p.w / 2, 'bottom');
+  lastStand = { p, x: b.pivotX };
+  popup(tr('frozeBack'), W / 2, p.y - 110, '#bfe6ff', 15);
+  respawnFx();
+}
+
+function startBoost() {
+  const price = boostPrice();
+  if (coins < price || b.state !== 'stand' || over) return;
+  const targetY = lastStand.p.y - BOOST_M * PX_PER_M;
+  generateUpTo(targetY - H * 2);
+  let p = null;  // maqsad: 300 m dan yuqoridagi eng yaqin, muz bo'lmagan platforma
+  for (const q of platforms) if (q.y <= targetY && q.type !== 'ice' && (!p || q.y > p.y)) p = q;
+  if (!p) return;
+  spend(price);
+  aim = null; hint = false; b.slideV = 0; b.state = 'boost';
+  const a0 = b.angle;
+  b.boost = { x0: b.x, y0: b.y, a0, a1: Math.ceil(a0 / (2 * Math.PI) - 1e-6) * 2 * Math.PI + 6 * Math.PI, p, x1: p.x + p.w / 2, t: 0, dur: 2.6 };
+  Snd.boost(); haptic('heavy');
+}
+
+function stepBoost(dt) {
+  const B = b.boost;
+  B.t += dt;
+  const u = Math.min(1, B.t / B.dur), e = u < 0.5 ? 4 * u * u * u : 1 - Math.pow(2 - 2 * u, 3) / 2;
+  b.x = lerp(B.x0, B.x1, e);
+  b.y = lerp(B.y0, B.p.y - BH / 2, e);
+  b.angle = lerp(B.a0, B.a1, e);
+  if (Math.random() < dt * 60) {
+    const s = Math.sin(b.angle), c = Math.cos(b.angle);
+    particles.push({ x: b.x - s * BH / 2 + rnd(-4, 4), y: b.y + c * BH / 2, vx: rnd(-40, 40), vy: rnd(80, 200), life: 0, max: rnd(0.3, 0.6), size: rnd(3, 6), kind: 'fire' });
+  }
+  if (u >= 1) finishBoost();
+}
+
+function finishBoost() {
+  const B = b.boost, p = B.p;
+  b.boost = null;
+  // yo'lda qolgan checkpointlar ham faollashadi
+  for (const q of platforms) if (q.cp && !q.active && q !== p && q.y > p.y && q.y < B.y0) { q.active = true; if (q.y < checkpoint.y) checkpoint = q; }
+  placeStanding(p, B.x1, 'bottom');
+  b.landPhi = 0;
+  landFx(p, b.pivotX, 1.4); shake = 4;
+  Snd.land(p.type, 800, 'bottom');
+  settle();
+}
+
+function buyLife() {
+  if (coins < PRICE_LIFE) return;
+  if (over) {
+    spend(PRICE_LIFE); over = false; lives = 1;
+    const p = lastStand.p;
+    placeStanding(p, p.type === 'ice' ? p.x + p.w / 2 : lastStand.x, 'bottom');
+    respawnFx(); Snd.buy();
+  } else if (lives < LIVES) {
+    spend(PRICE_LIFE); lives++;
+    popup(tr('lifePlus'), b.x, b.y - 60, '#9dffa0', 18);
+    Snd.buy();
+  }
+}
+
+function updateCamera(dt) {
+  prevCamY = camY;
+  if (b.state === 'boost') { camY = camTarget = b.y - H * 0.6; generateUpTo(camY - H); return; }
+  if (b.plat && (b.state === 'stand' || b.state === 'pivot' || b.state === 'fallen')) camTarget = b.plat.y - H * 0.72;
+  if (!Number.isFinite(camY)) camY = camTarget;
+  camY += (camTarget - camY) * Math.min(1, dt * 4);
+  generateUpTo(camY - H);
+}
+
+// ================= Effektlar =================
+const DUST = { ground: [140, 108, 70], wood: [160, 120, 80], stone: [178, 172, 162], wet: [120, 130, 140] };
+function landFx(p, x, k) {
+  const y = p.y;
+  if (p.type === 'snow') {
+    for (let i = 0; i < 14 * k; i++) particles.push({ x: x + rnd(-8, 8), y: y - 4, vx: rnd(-110, 110), vy: rnd(-150, -30), life: 0, max: rnd(0.4, 0.8), size: rnd(1.5, 3.5), kind: 'snow' });
+  } else if (p.type === 'ice') {
+    for (let i = 0; i < 9 * k; i++) particles.push({ x: x + rnd(-8, 8), y: y - 1, vx: rnd(-140, 140), vy: rnd(-170, -40), life: 0, max: rnd(0.35, 0.7), size: rnd(1.2, 2.6), kind: 'ice' });
+  } else if (p.type === 'wet') {
+    for (let i = 0; i < 10 * k; i++) particles.push({ x: x + rnd(-8, 8), y: y - 1, vx: rnd(-120, 120), vy: rnd(-180, -60), life: 0, max: rnd(0.3, 0.6), size: rnd(1.5, 2.8), kind: 'drop' });
+  } else {
+    const col = DUST[p.type] || DUST.stone;
+    for (let i = 0; i < 8 * k; i++) particles.push({ x: x + rnd(-6, 6), y: y - 1, vx: rnd(-80, 80), vy: rnd(-90, -15), life: 0, max: rnd(0.35, 0.65), size: rnd(2.5, 5), kind: 'dust', col });
+  }
+}
+function burst(x, y, kind, n) {
+  for (let i = 0; i < n; i++) { const a = rnd(0, Math.PI * 2), s = rnd(90, 240); particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0, max: rnd(0.5, 0.9), size: rnd(2.5, 5), kind }); }
+}
+function respawnFx() { burst(b.x, b.y, 'spark', 14); Snd.respawn(); }
+function popup(text, x, y, color, size) { popups.push({ text, x, y, color, size, t: 0 }); }
+
+// Qor yog'ishi (ekran koordinatalarida)
+const flakes = [];
+for (let i = 0; i < 220; i++) flakes.push({ x: Math.random() * W, y: Math.random() * 1200, r: rnd(0.7, 2.6), v: rnd(28, 70), ph: rnd(0, 6.28), d: rnd(0.3, 1) });
+let snowN = 0, petalN = 0;
+function updateSnow(dt, temp) {
+  snowN = temp > 2 ? 0 : temp > -10 ? Math.round(lerp(0, 70, (2 - temp) / 12)) : Math.round(lerp(70, 220, Math.min(1, (-10 - temp) / 22)));
+  // Yaponiyada yoz-kuzda sakura gulbarglari uchadi
+  petalN = themeKey === 'jp' && temp > 8 ? 26 : 0;
+  const storm = temp < -10 ? Math.min(1, (-10 - temp) / 20) : 0;
+  const wind = windNow * 1.5 + 10 + storm * 40 * (windNow < 0 ? -1 : 1);
+  const dCam = camY - prevCamY;
+  const n = Math.max(snowN, petalN), petal = snowN === 0;
+  for (let i = 0; i < n; i++) {
+    const f = flakes[i];
+    f.y += f.v * f.d * (petal ? 0.45 : 1 + storm * 0.8) * dt - dCam * f.d * 0.6;
+    f.x += (wind * f.d + Math.sin(NOW * 1.3 + f.ph) * (petal ? 28 : 12)) * dt;
+    if (f.y > H + 6) { f.y = -6; f.x = Math.random() * W; }
+    if (f.y < -10) f.y = H + 4;
+    if (f.x > W + 6) f.x = -6;
+    if (f.x < -6) f.x = W + 6;
+  }
+}
+
+// ================= Ovoz: tabiat va baklashka (Web Audio, hammasi shu yerda sintez qilinadi) =================
+const Snd = (() => {
+  let ac = null, out = null, nat = null, sfx = null, nbuf = null, wind = null, swish = null, hiss = null;
+  let muted = store('bflip_mute') === '1', isFrozen = false, lastHalf = 0, lastWobble = -1;
+  const plucks = {};
+  const timers = { bird: 1, song: 3, trill: 5, cuckoo: 6, cricket: 2, crow: 4, leaves: 2, drip: 2, creak: 5 };
+  const ok = () => !!ac && !muted && !testing;
+  const ss = (a, c, x) => { const t = clamp((x - a) / (c - a), 0, 1); return t * t * (3 - 2 * t); };
+  // O'zbekiston: Hijoz ladi (dutor), Xitoy: pentatonika, Amerika: major pentatonika, Yaponiya: In ladi
+  const SCALE = () => THEMES[themeKey].scale;   // musiqa ladi mavzuga qarab
+  const resumeAc = () => { try { const pr = ac.resume(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {} };
+
+  function init() {
+    if (ac) { if (ac.state === 'suspended' && !document.hidden) resumeAc(); return; }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    try { ac = new AC(); } catch (e) { ac = null; return; }
+    const comp = ac.createDynamicsCompressor();
+    comp.threshold.value = -16; comp.knee.value = 10; comp.ratio.value = 4; comp.attack.value = 0.003; comp.release.value = 0.25;
+    out = ac.createGain(); out.gain.value = muted ? 0 : 0.9;
+    out.connect(comp); comp.connect(ac.destination);
+    nat = ac.createGain(); nat.gain.value = 0.85; nat.connect(out);
+    sfx = ac.createGain(); sfx.gain.value = 1; sfx.connect(out);
+    const len = ac.sampleRate * 3;
+    nbuf = ac.createBuffer(1, len, ac.sampleRate);
+    const d = nbuf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    const w1 = loop('lowpass', 450, 0.6, nat), w2 = loop('bandpass', 600, 9, nat);
+    wind = { g: w1.g, lp: w1.f, hg: w2.g, bp: w2.f };
+    swish = loop('bandpass', 600, 1.3, sfx);
+    hiss = loop('highpass', 3000, 0.8, sfx);
+    if (ac.state === 'suspended') resumeAc();
+  }
+  function loop(type, f, q, dest) {
+    const src = ac.createBufferSource(); src.buffer = nbuf; src.loop = true;
+    const fl = ac.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q;
+    const g = ac.createGain(); g.gain.value = 0;
+    src.connect(fl); fl.connect(g); g.connect(dest);
+    src.start(ac.currentTime, Math.random() * 2);
+    return { src, f: fl, g };
+  }
+  function panNode(p, dest) {
+    if (!ac.createStereoPanner) return dest;
+    const n = ac.createStereoPanner(); n.pan.value = clamp(p, -1, 1); n.connect(dest); return n;
+  }
+  function envGain(dest, t, peak, a, d) {
+    const g = ac.createGain(); peak = Math.max(0.0002, peak);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + a);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + a + d);
+    g.connect(dest); return g;
+  }
+  function tone(o) {
+    const t = o.t ?? ac.currentTime, a = o.a || 0.005;
+    const osc = ac.createOscillator(); osc.type = o.type || 'sine';
+    osc.frequency.setValueAtTime(o.f0, t);
+    if (o.f1) osc.frequency.exponentialRampToValueAtTime(o.f1, t + (o.glide ?? o.dur));
+    const g = envGain(panNode(o.pan || 0, o.bus || sfx), t, o.gain, a, o.dur);
+    if (o.lp) { const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = o.lp; osc.connect(f); f.connect(g); }
+    else osc.connect(g);
+    osc.start(t); osc.stop(t + a + o.dur + 0.05);
+  }
+  function noise(o) {
+    const t = o.t ?? ac.currentTime, a = o.a || 0.003;
+    const src = ac.createBufferSource(); src.buffer = nbuf;
+    const f = ac.createBiquadFilter(); f.type = o.ft || 'bandpass'; f.Q.value = o.q ?? 1;
+    f.frequency.setValueAtTime(o.f, t);
+    if (o.f1) f.frequency.exponentialRampToValueAtTime(o.f1, t + o.dur);
+    const g = envGain(panNode(o.pan || 0, o.bus || sfx), t, o.gain, a, o.dur);
+    src.connect(f); f.connect(g);
+    src.start(t, Math.random() * 2, a + o.dur + 0.05);
+  }
+  // Karplus-Strong: chertilgan tor ovozi
+  function pluckBuf(freq) {
+    const key = Math.round(freq * 10);
+    if (plucks[key]) return plucks[key];
+    const sr = ac.sampleRate, len = Math.floor(sr * 1.8), buf = ac.createBuffer(1, len, sr), d = buf.getChannelData(0);
+    const N = Math.max(2, Math.round(sr / freq)), ring = new Float32Array(N);
+    let prev = 0;
+    for (let i = 0; i < N; i++) { prev = prev * 0.5 + (Math.random() * 2 - 1) * 0.5; ring[i] = prev; }
+    let idx = 0;
+    for (let i = 0; i < len; i++) { const nx = idx + 1 === N ? 0 : idx + 1, v = ring[idx]; d[i] = v; ring[idx] = 0.4986 * (v + ring[nx]); idx = nx; }
+    return (plucks[key] = buf);
+  }
+  function pluck(freq, t, gain, pan) {
+    const src = ac.createBufferSource(); src.buffer = pluckBuf(freq);
+    const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = THEMES[themeKey].lp;
+    const g = ac.createGain(); g.gain.setValueAtTime(gain, t); g.gain.setTargetAtTime(0, t + 0.9, 0.25);
+    src.connect(f); f.connect(g); g.connect(panNode(pan || 0, sfx));
+    src.start(t); src.stop(t + 1.8);
+  }
+
+  // ---- Tabiat ----
+  function birdChirps(pan, dist) {
+    let t = ac.currentTime + 0.02; const base = rnd(2800, 4300), n = 2 + Math.floor(Math.random() * 5);
+    for (let i = 0; i < n; i++) { tone({ t, f0: base * rnd(1, 1.15), f1: base * rnd(0.72, 0.9), dur: rnd(0.05, 0.09), a: 0.006, gain: 0.05 * dist, pan, bus: nat }); t += rnd(0.09, 0.16); }
+  }
+  function birdSong(pan, dist) {
+    let t = ac.currentTime + 0.02, f = rnd(1800, 2800); const n = 3 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < n; i++) {
+      const f1 = clamp(f * rnd(0.8, 1.3), 1300, 3800);
+      tone({ t, f0: f, f1, dur: rnd(0.12, 0.26), a: 0.02, gain: 0.04 * dist, pan, bus: nat });
+      f = clamp(f1 * rnd(0.9, 1.15), 1400, 3600); t += rnd(0.16, 0.3);
+    }
+  }
+  function birdTrill(pan, dist) {
+    const t = ac.currentTime + 0.02, dur = rnd(0.5, 1.1), f = rnd(3500, 5200), rate = rnd(22, 38);
+    const osc = ac.createOscillator(); osc.frequency.setValueAtTime(f, t); osc.frequency.linearRampToValueAtTime(f * rnd(0.85, 1.1), t + dur);
+    const lfo = ac.createOscillator(); lfo.frequency.value = rate;
+    const lg = ac.createGain(); lg.gain.value = f * 0.12; lfo.connect(lg); lg.connect(osc.frequency);
+    const am = ac.createGain(); am.gain.value = 0.5;
+    const al = ac.createOscillator(); al.frequency.value = rate;
+    const ag = ac.createGain(); ag.gain.value = 0.5; al.connect(ag); ag.connect(am.gain);
+    const g = envGain(panNode(pan, nat), t, 0.03 * dist, 0.05, dur);
+    osc.connect(am); am.connect(g);
+    for (const o of [osc, lfo, al]) { o.start(t); o.stop(t + dur + 0.1); }
+  }
+  function cuckoo(pan) {
+    let t = ac.currentTime + 0.02;
+    for (let i = 0, n = 2 + Math.floor(Math.random() * 2); i < n; i++) {
+      tone({ t, f0: 720, f1: 700, dur: 0.22, a: 0.03, gain: 0.045, pan, bus: nat, lp: 1800 });
+      tone({ t: t + 0.3, f0: 590, f1: 575, dur: 0.32, a: 0.03, gain: 0.045, pan, bus: nat, lp: 1800 });
+      t += 0.95;
+    }
+  }
+  function crickets(pan) {
+    let t = ac.currentTime + 0.02; const f = rnd(4300, 4900);
+    for (let k = 0, n = 2 + Math.floor(Math.random() * 3); k < n; k++) {
+      for (let i = 0; i < 4; i++) { tone({ t, f0: f, dur: 0.018, a: 0.003, gain: 0.012, pan, bus: nat }); t += 0.03; }
+      t += rnd(0.18, 0.3);
+    }
+  }
+  function crow(pan, dist) {
+    let t = ac.currentTime + 0.02;
+    for (let i = 0, n = 1 + Math.floor(Math.random() * 3); i < n; i++) {
+      const osc = ac.createOscillator(); osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(rnd(330, 420), t); osc.frequency.exponentialRampToValueAtTime(rnd(250, 300), t + 0.32);
+      const am = ac.createGain(); am.gain.value = 0.6;
+      const lfo = ac.createOscillator(); lfo.frequency.value = 55;
+      const lg = ac.createGain(); lg.gain.value = 0.4; lfo.connect(lg); lg.connect(am.gain);
+      const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1250; bp.Q.value = 3;
+      const bp2 = ac.createBiquadFilter(); bp2.type = 'bandpass'; bp2.frequency.value = 2600; bp2.Q.value = 4;
+      const g = envGain(panNode(pan, nat), t, 0.06 * dist, 0.02, 0.3);
+      osc.connect(am); am.connect(bp); am.connect(bp2); bp.connect(g); bp2.connect(g);
+      osc.start(t); osc.stop(t + 0.4); lfo.start(t); lfo.stop(t + 0.4);
+      noise({ t, f: 1500, q: 2, dur: 0.25, gain: 0.012 * dist, pan, bus: nat });
+      t += rnd(0.45, 0.65);
+    }
+  }
+  function leaves(pan) {
+    let t = ac.currentTime + 0.02;
+    for (let i = 0, n = 6 + Math.floor(Math.random() * 8); i < n; i++) { noise({ t, ft: 'highpass', f: rnd(3000, 6000), q: 0.7, dur: rnd(0.03, 0.09), gain: rnd(0.01, 0.028), pan: pan + rnd(-0.2, 0.2), bus: nat }); t += rnd(0.02, 0.09); }
+  }
+  function drip(pan) { tone({ t: ac.currentTime + 0.02, f0: rnd(900, 1400), f1: rnd(1800, 2600), dur: 0.06, a: 0.002, gain: 0.03, pan, bus: nat }); }
+  function creak(pan) {
+    const t = ac.currentTime + 0.02, dur = rnd(0.6, 1.4);
+    const osc = ac.createOscillator(); osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(rnd(60, 110), t); osc.frequency.linearRampToValueAtTime(rnd(40, 140), t + dur);
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 380; lp.Q.value = 6;
+    const g = envGain(panNode(pan, nat), t, 0.045, 0.2, dur);
+    osc.connect(lp); lp.connect(g); osc.start(t); osc.stop(t + dur + 0.3);
+  }
+
+  // ---- Baklashka ----
+  function plasticTick(t, k) { noise({ t, ft: 'highpass', f: 3500, q: 0.7, dur: 0.012, gain: 0.05 * k }); }
+  function thump(t, k) {
+    tone({ t, f0: 150, f1: 70, dur: 0.14, a: 0.003, gain: 0.16 * k });
+    noise({ t, f: 950, q: 1.2, dur: 0.05, gain: 0.07 * k });
+    plasticTick(t, k);
+  }
+  function slosh(k, t) {
+    if (!ok()) return;
+    t = t ?? ac.currentTime;
+    if (isFrozen) { tone({ t, f0: 260, f1: 190, dur: 0.08, gain: 0.05 * k, lp: 900 }); return; }  // muzlagan suv taqillaydi
+    const src = ac.createBufferSource(); src.buffer = nbuf;
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 3;
+    lp.frequency.setValueAtTime(rnd(500, 760), t); lp.frequency.linearRampToValueAtTime(rnd(340, 540), t + 0.4);
+    const g = ac.createGain(), v = 0.06 * k;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(v, t + 0.05); g.gain.linearRampToValueAtTime(v * 0.3, t + 0.12);
+    g.gain.linearRampToValueAtTime(v * 0.75, t + 0.19); g.gain.linearRampToValueAtTime(v * 0.2, t + 0.27);
+    g.gain.linearRampToValueAtTime(v * 0.4, t + 0.33); g.gain.linearRampToValueAtTime(0.0001, t + 0.45);
+    src.connect(lp); lp.connect(g); g.connect(sfx); src.start(t, Math.random() * 2, 0.5);
+    for (let i = 0, n = 1 + Math.floor(k * 3); i < n; i++) { const f0 = rnd(260, 520); tone({ t: t + rnd(0.03, 0.3), f0, f1: f0 * rnd(1.6, 2.4), dur: rnd(0.04, 0.07), a: 0.004, gain: 0.025 * k, lp: 2000 }); }
+  }
+  function grab() {
+    if (!ok()) return; const t = ac.currentTime;
+    for (let i = 0; i < 3; i++) noise({ t: t + i * rnd(0.02, 0.05), f: rnd(2500, 5000), q: 1.5, dur: 0.015, gain: 0.04 });
+  }
+  function launchS(power) {
+    if (!ok()) return; const t = ac.currentTime;
+    noise({ t, f: 300, f1: 1400 + power * 900, q: 0.9, dur: 0.28, a: 0.02, gain: 0.08 + power * 0.08 });
+    for (let i = 0; i < 2; i++) noise({ t: t + i * 0.03, f: rnd(3000, 5000), q: 1.4, dur: 0.02, gain: 0.05 });
+    slosh(0.5 + power * 0.4, t + 0.02);
+  }
+  function landS(type, impact, end) {
+    if (!ok()) return;
+    const t = ac.currentTime, k = clamp(impact / 900, 0.35, 1.2);
+    thump(t, k);
+    if (end === 'cap') tone({ t, f0: 1900, f1: 1700, dur: 0.04, gain: 0.05 * k });
+    const kind = BOTTLES[bottleKey].kind;   // chinni/sopol jaranglaydi, termos metall ovoz beradi
+    if (kind === 'choynak' || kind === 'koza') { tone({ t, f0: 1850, dur: 0.12, a: 0.002, gain: 0.05 * k }); tone({ t, f0: 2750, dur: 0.09, a: 0.002, gain: 0.03 * k }); }
+    else if (kind === 'termos') { tone({ t, f0: 920, dur: 0.35, a: 0.002, gain: 0.05 * k }); tone({ t, f0: 1460, dur: 0.25, a: 0.002, gain: 0.03 * k }); }
+    if (type === 'wood') {
+      tone({ t, f0: 520, f1: 470, dur: 0.14, gain: 0.09 * k }); tone({ t, f0: 1150, dur: 0.06, gain: 0.035 * k });
+      noise({ t, f: 900, q: 4, dur: 0.06, gain: 0.06 * k });
+    } else if (type === 'stone') {
+      noise({ t, f: 2600, q: 1.5, dur: 0.04, gain: 0.1 * k }); tone({ t, f0: 1700, f1: 1450, dur: 0.035, gain: 0.04 * k });
+      for (let i = 0; i < 4; i++) noise({ t: t + rnd(0.01, 0.12), ft: 'highpass', f: 4000, q: 0.8, dur: 0.008, gain: 0.03 * k });
+    } else if (type === 'ground') {
+      noise({ t, ft: 'lowpass', f: 320, q: 0.8, dur: 0.14, gain: 0.12 * k }); noise({ t, ft: 'highpass', f: 3500, q: 0.6, dur: 0.1, gain: 0.025 * k });
+    } else if (type === 'wet') {
+      noise({ t, f: 1900, f1: 800, q: 0.8, dur: 0.26, a: 0.005, gain: 0.1 * k });
+      for (let i = 0; i < 3; i++) { const f0 = rnd(900, 1400); tone({ t: t + rnd(0.05, 0.3), f0, f1: f0 * 1.9, dur: 0.05, gain: 0.03 * k }); }
+    } else if (type === 'snow') {
+      noise({ t, ft: 'lowpass', f: 500, q: 0.7, dur: 0.12, gain: 0.08 * k });
+      for (let i = 0; i < 9; i++) noise({ t: t + rnd(0, 0.16), f: rnd(1200, 3200), q: 2.2, dur: rnd(0.012, 0.03), gain: 0.05 * k });
+    } else if (type === 'ice') {
+      for (const [f, d, g] of [[2400, 0.45, 0.05], [3700, 0.32, 0.035], [5600, 0.22, 0.025], [7900, 0.12, 0.015]]) tone({ t, f0: f * rnd(0.97, 1.03), dur: d, a: 0.002, gain: g * k });
+      noise({ t, ft: 'highpass', f: 5000, q: 0.7, dur: 0.02, gain: 0.05 * k });
+    }
+    slosh(0.35 + k * 0.5, t + 0.02);
+  }
+  function wobble(v) {
+    if (!ok() || NOW - lastWobble < 0.07) return;
+    lastWobble = NOW;
+    const k = clamp(v / 3, 0.15, 0.8), t = ac.currentTime;
+    tone({ t, f0: 210, f1: 150, dur: 0.05, gain: 0.06 * k });
+    plasticTick(t, k * 0.7);
+    slosh(k * 0.6, t);
+  }
+  function fall(type) {
+    if (!ok()) return; const t = ac.currentTime;
+    let o = 0;
+    for (let i = 0; i < 4; i++) {
+      const k = 0.9 - i * 0.2;
+      thump(t + o, k);
+      tone({ t: t + o, f0: 360, f1: 300, dur: 0.07, gain: 0.06 * k });
+      if (type !== 'snow') noise({ t: t + o, f: rnd(1500, 3000), q: 2, dur: 0.03, gain: 0.05 * k });
+      o += 0.11 - i * 0.02;
+    }
+    slosh(0.9, t + 0.05);
+  }
+  function slideOffS() {
+    if (!ok()) return; const t = ac.currentTime;
+    noise({ t, ft: 'highpass', f: 2500, q: 0.8, dur: 0.22, gain: 0.05 });
+    noise({ t: t + 0.05, f: 900, f1: 350, q: 1, dur: 0.35, gain: 0.05 });
+  }
+  function dropAway() {
+    if (!ok()) return; const t = ac.currentTime;
+    tone({ t, f0: 900, f1: 180, dur: 0.9, a: 0.02, gain: 0.05 });
+    noise({ t, f: 1200, f1: 300, q: 0.8, dur: 0.6, gain: 0.05 });
+  }
+  function praiseS(gold, cap) {
+    if (!ok()) return; const t = ac.currentTime + 0.03;
+    let notes;
+    if (cap) notes = [7, 9, 11, 9, 11, 7];
+    else if (gold) { const s = Math.floor(rnd(0, 3)); notes = [s, s + 2, s + 4, s + 6, Math.random() < 0.5 ? 7 : 11]; }
+    else { const s = Math.floor(rnd(1, 6)); notes = Math.random() < 0.5 ? [s, s + 2, s + 4] : [s + 4, s + 2, s + 4]; }
+    notes.forEach((n, i) => pluck(SCALE()[clamp(n, 0, 11)], t + i * (cap ? 0.07 : 0.1), 0.22, rnd(-0.3, 0.3)));
+    if (gold || cap) pluck(SCALE()[0] / 2, t, 0.2, 0);
+  }
+  function checkpointS() {
+    if (!ok()) return; const t = ac.currentTime + 0.02;
+    for (const [o, big] of [[0, 1], [0.16, 0], [0.32, 1]]) {
+      if (big) tone({ t: t + o, f0: 95, f1: 55, dur: 0.25, a: 0.003, gain: 0.25 });
+      noise({ t: t + o, f: big ? 1800 : 3000, q: 1, dur: 0.05, gain: big ? 0.08 : 0.12 });
+    }
+    [0, 4, 7].forEach((n, i) => pluck(SCALE()[n], t + 0.45 + i * 0.05, 0.2, (i - 1) * 0.3));
+  }
+  function zoneS(zi) {
+    if (!ok()) return; const t = ac.currentTime + 0.05;
+    const seq = zi >= 2 ? [1, 4, 5, 1] : [0, 4, 7, 4];
+    seq.forEach((n, i) => pluck(SCALE()[n] / 2, t + i * 0.22, 0.22, 0));
+    noise({ t, ft: 'lowpass', f: 300, f1: 1200, q: 0.7, dur: 1.2, a: 0.4, gain: 0.05, bus: nat });
+  }
+  function respawnS() {
+    if (!ok()) return; const t = ac.currentTime;
+    tone({ t, f0: 660, f1: 990, dur: 0.25, a: 0.01, gain: 0.05 });
+    tone({ t: t + 0.08, f0: 1320, dur: 0.2, a: 0.005, gain: 0.03 });
+  }
+  function overS() {
+    if (!ok()) return; const t = ac.currentTime + 0.05;
+    [7, 5, 3, 1, 0].forEach((n, i) => pluck(SCALE()[n], t + i * 0.18, 0.2, 0));
+  }
+  function coinS(v) {
+    if (!ok()) return; const t = ac.currentTime;
+    tone({ t, f0: 988, dur: 0.07, a: 0.003, gain: 0.06, type: 'square', lp: 4000 });
+    tone({ t: t + 0.07, f0: 1319, dur: 0.28, a: 0.003, gain: 0.06, type: 'square', lp: 4000 });
+    if (v > 1) tone({ t: t + 0.16, f0: 1760, dur: 0.35, a: 0.003, gain: 0.05, type: 'square', lp: 5000 });
+  }
+  function buyS() {
+    if (!ok()) return; const t = ac.currentTime;
+    for (let i = 0; i < 3; i++) tone({ t: t + i * 0.05, f0: rnd(2200, 3200), dur: 0.12, a: 0.002, gain: 0.04 });
+    pluck(SCALE()[4], t + 0.12, 0.18, 0);
+  }
+  function boostS() {
+    if (!ok()) return; const t = ac.currentTime;
+    noise({ t, f: 200, f1: 2600, q: 0.8, dur: 2.4, a: 0.15, gain: 0.12 });
+    tone({ t, f0: 110, f1: 520, dur: 2.3, a: 0.1, gain: 0.08, type: 'sawtooth', lp: 900 });
+    [0, 2, 4, 7].forEach((n, i) => pluck(SCALE()[n], t + 2.3 + i * 0.07, 0.18, 0));
+  }
+  function freezeS() {
+    if (!ok()) return; const t = ac.currentTime;
+    for (let i = 0; i < 12; i++) noise({ t: t + i * rnd(0.02, 0.05), ft: 'highpass', f: rnd(3000, 7000), q: 1, dur: 0.02, gain: 0.05 });
+    [3600, 5100].forEach((f, i) => tone({ t: t + 0.25 + i * 0.05, f0: f, dur: 0.4, a: 0.002, gain: 0.03 }));
+  }
+
+  function update(dt, h) {
+    if (!ac || muted) return;
+    const now = ac.currentTime;
+    isFrozen = tempAt(Math.max(0, -b.y / PX_PER_M)) < -6;
+    const sum = 1 - ss(90, 190, h);
+    const aut = ss(100, 150, h) * (1 - ss(230, 280, h));
+    const win = ss(220, 265, h) * (1 - ss(330, 385, h));
+    const gla = ss(330, 390, h);
+    // shamol: yozda mayin shabada, qishda guvillash, muzlikda bo'ron
+    const gust = 0.6 + 0.4 * Math.sin(NOW * 0.23) * Math.sin(NOW * 0.61 + 1.3);
+    wind.g.gain.setTargetAtTime((0.012 * sum + 0.04 * aut + 0.065 * win + 0.12 * gla) * gust, now, 0.4);
+    wind.lp.frequency.setTargetAtTime(380 + 900 * (win + gla) + 300 * aut * gust, now, 0.5);
+    wind.hg.gain.setTargetAtTime((0.03 * win + 0.1 * gla) * (0.5 + 0.5 * gust), now, 0.6);
+    wind.bp.frequency.setTargetAtTime(480 + 260 * Math.sin(NOW * 0.17) + 140 * Math.sin(NOW * 0.53), now, 0.3);
+    // uchishdagi havo shovqini va muzda sirpanish
+    const fly = b.state === 'fly', sp = Math.hypot(b.vx, b.vy);
+    const sw = fly ? Math.min(0.09, Math.abs(b.omega) * 0.006 + sp * 0.00004) * (0.25 + 0.75 * Math.abs(Math.sin(b.angle))) : 0;
+    swish.g.gain.setTargetAtTime(sw, now, 0.03);
+    if (fly) swish.f.frequency.setTargetAtTime(450 + sp * 0.5, now, 0.05);
+    const sliding = (b.state === 'stand' || b.state === 'pivot') && b.plat && Math.abs(b.slideV) > 3;
+    hiss.g.gain.setTargetAtTime(sliding ? Math.min(0.07, Math.abs(b.slideV) * 0.0011) : 0, now, 0.05);
+    if (sliding) hiss.f.frequency.setTargetAtTime(b.plat.type === 'ice' ? 3200 : 1400, now, 0.05);
+    // uchayotganda har yarim aylanishda suv chayqaladi
+    const half = Math.floor(b.angle / Math.PI);
+    if (fly && half !== lastHalf && Math.abs(b.omega) > 2.5) slosh(0.2 + Math.min(0.35, Math.abs(b.omega) * 0.025));
+    lastHalf = half;
+    // tabiat ovozlari mavsumga qarab
+    const tick = (k, weight, interval, fn) => {
+      timers[k] -= dt;
+      if (timers[k] <= 0) { timers[k] = interval * rnd(0.5, 1.5); if (weight > 0.02 && Math.random() < weight) fn(); }
+    };
+    const pan = () => rnd(-0.85, 0.85), dist = () => rnd(0.35, 1);
+    tick('bird', sum + 0.25 * aut, 2.6, () => birdChirps(pan(), dist()));
+    tick('song', sum, 5, () => birdSong(pan(), dist()));
+    tick('trill', sum * 0.8, 7, () => birdTrill(pan(), dist()));
+    tick('cuckoo', sum * 0.7, 16, () => cuckoo(pan()));
+    tick('cricket', sum * 0.6, 3, () => crickets(pan()));
+    tick('crow', 0.8 * aut + 0.45 * win, 7, () => crow(pan(), dist()));
+    tick('leaves', aut, 3.5, () => leaves(pan()));
+    tick('drip', 0.7 * aut, 2.2, () => drip(pan()));
+    tick('creak', 0.7 * gla + 0.2 * win, 8, () => creak(pan()));
+  }
+
+  function toggle() {
+    muted = !muted; store('bflip_mute', muted ? '1' : '0');
+    if (out) out.gain.setTargetAtTime(muted ? 0 : 0.9, ac.currentTime, 0.05);
+    return muted;
+  }
+  return {
+    init, toggle, update, grab, slosh, wobble, fall, dropAway, freeze: freezeS,
+    isMuted: () => muted,
+    launch: launchS, land: landS, slideOff: slideOffS, praise: praiseS, checkpoint: checkpointS, zone: zoneS, respawn: respawnS, over: overS,
+    coin: coinS, buy: buyS, boost: boostS,
+    suspend: () => { if (ac && ac.state === 'running') ac.suspend(); },
+    resume: () => { if (ac && !muted) resumeAc(); },
+    state: () => (ac ? ac.state : 'none')
+  };
+})();
+
+// ================= Chizish yordamchilari =================
+function circ(c, x, y, r) { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); }
+function rr(c, x, y, w, h, r) {
+  c.beginPath(); c.moveTo(x + r, y);
+  c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+}
+function sparkle(c, x, y, r) {
+  c.beginPath(); c.moveTo(x, y - r);
+  c.quadraticCurveTo(x, y, x + r, y); c.quadraticCurveTo(x, y, x, y + r);
+  c.quadraticCurveTo(x, y, x - r, y); c.quadraticCurveTo(x, y, x, y - r); c.fill();
+}
+function parallax(spacing, par, fn) {
+  const o = VY * par;
+  const k0 = Math.floor((o - 160) / spacing), k1 = Math.ceil((o + H + 160) / spacing);
+  for (let k = k0; k <= k1; k++) fn(k, k * spacing - o);
+}
+function visible(p) {
+  const top = p.y - VY, bot = top + (p.type === 'ground' ? 3000 : 80);
+  return bot > -90 && top < H + 40;
+}
+function pullPoint() {
+  const dx = aim.cx - aim.sx, dy = aim.cy - aim.sy, len = Math.hypot(dx, dy) || 1;
+  const k = Math.min(1, MAXDRAG / len) * 0.55;
+  return { x: b.x + dx * k, y: b.y + dy * k };
+}
+function makeCanvas(w, h) { const cv = document.createElement('canvas'); cv.width = Math.max(1, Math.ceil(w)); cv.height = Math.max(1, Math.ceil(h)); return cv; }
+
+// ================= Fon: osmon, tog'lar, bulutlar =================
+function makeCloud(seed) {
+  const r = rng(seed), cw = 320, ch = 150, cv = makeCanvas(cw, ch), c = cv.getContext('2d');
+  for (let i = 0; i < 16; i++) {
+    const u = r(), x = 55 + u * 210, y = 85 - Math.sin(u * Math.PI) * 30 + (r() - 0.5) * 22, rad = 22 + r() * 34;
+    const g = c.createRadialGradient(x, y - rad * 0.35, rad * 0.1, x, y, rad);
+    g.addColorStop(0, 'rgba(255,255,255,0.95)'); g.addColorStop(0.55, 'rgba(250,252,255,0.75)'); g.addColorStop(1, 'rgba(240,245,252,0)');
+    c.fillStyle = g; c.beginPath(); c.arc(x, y, rad, 0, Math.PI * 2); c.fill();
+  }
+  c.globalCompositeOperation = 'source-atop';
+  const sh = c.createLinearGradient(0, 55, 0, 140);
+  sh.addColorStop(0, 'rgba(255,255,255,0)'); sh.addColorStop(1, 'rgba(140,155,185,0.55)');
+  c.fillStyle = sh; c.fillRect(0, 0, cw, ch);
+  return cv;
+}
+const CLOUDS = [11, 23, 37, 59].map(makeCloud);
+
+function peakH(x, s) {
+  return 0.55 * (1 - Math.abs(Math.sin(x * 0.0062 + s))) + 0.3 * (1 - Math.abs(Math.sin(x * 0.0155 + s * 1.7))) + 0.12 * Math.sin(x * 0.043 + s * 3.1) + 0.05;
+}
+function hillH(x, s) { return 0.55 + 0.28 * Math.sin(x * 0.011 + s) + 0.17 * Math.sin(x * 0.029 + s * 2.3); }
+// Uzoq tog'larning shakli mavzuga qarab: o'tkir cho'qqilar, Xitoy karst ustunlari, Amerika mesalari, Fudzi
+function farH(x, s, shape) {
+  if (shape === 'karst') return 0.08 + 0.95 * Math.pow(1 - Math.abs(Math.sin(x * 0.019 + s)), 3) + 0.5 * Math.pow(1 - Math.abs(Math.sin(x * 0.012 + s * 2.3)), 5);
+  if (shape === 'mesa') {
+    const r = 0.45 + 0.4 * Math.sin(x * 0.008 + s) + 0.2 * Math.sin(x * 0.023 + s * 1.6);
+    return r > 0.62 ? 0.72 + 0.02 * Math.sin(x * 0.3) : r > 0.32 ? 0.38 + 0.02 * Math.sin(x * 0.27) : 0.12;
+  }
+  if (shape === 'dunes') return 0.22 + 0.16 * Math.sin(x * 0.007 + s) + 0.09 * Math.sin(x * 0.019 + s * 2) + 0.05 * Math.abs(Math.sin(x * 0.04 + s));
+  if (shape === 'fuji') {
+    const d = Math.abs(x - W * 0.56) / 230;
+    return Math.max(0.1 + 0.06 * Math.sin(x * 0.035 + s), Math.min(1.02, Math.pow(Math.max(0, 1 - d), 1.5) * 1.12));
+  }
+  return peakH(x, s);
+}
+
+function mountain(c, baseY, height, s, col, snowFrac, step, shape) {
+  if (baseY - height * 1.05 > H + 10) return;
+  const ys = [];
+  for (let x = -12; x <= W + 12; x += step) ys.push([x, baseY - farH(x, s, shape) * height]);
+  const outline = () => { c.beginPath(); c.moveTo(-12, H + 10); for (const [x, y] of ys) c.lineTo(x, y); c.lineTo(W + 12, H + 10); c.closePath(); };
+  outline();
+  const g = c.createLinearGradient(0, baseY - height, 0, baseY + 80);
+  g.addColorStop(0, rgb(shadeC(col, 0.12))); g.addColorStop(1, rgb(shadeC(col, -0.3)));
+  c.fillStyle = g; c.fill();
+  c.save(); outline(); c.clip();
+  if (snowFrac > 0.01) {
+    const sl = baseY - height * (1 - snowFrac);
+    c.beginPath(); c.moveTo(-12, baseY - height * 1.1 - 20);
+    for (let x = -12; x <= W + 12; x += step) c.lineTo(x, sl + Math.sin(x * 0.09 + s) * 6 + Math.sin(x * 0.31 + s * 2) * 3);
+    c.lineTo(W + 12, baseY - height * 1.1 - 20); c.closePath();
+    const sg = c.createLinearGradient(0, baseY - height, 0, sl + 10);
+    sg.addColorStop(0, 'rgba(255,255,255,0.97)'); sg.addColorStop(1, 'rgba(222,233,246,0.85)');
+    c.fillStyle = sg; c.fill();
+  }
+  // yorug'lik chapdan: o'ngga qaragan yonbag'irlar soyada
+  c.beginPath();
+  c.moveTo(ys[0][0], ys[0][1]);
+  for (const [x, y] of ys) c.lineTo(x, y);
+  for (let i = ys.length - 1; i >= 0; i--) {
+    const [x, y] = ys[i], yPrev = i > 2 ? ys[i - 3][1] : y;
+    c.lineTo(x, y + clamp((y - yPrev) * 2.4, 0, 90));
+  }
+  c.closePath();
+  c.fillStyle = 'rgba(20,30,60,0.2)'; c.fill();
+  c.restore();
+}
+
+function hills(c, baseY, height, s, col, zi) {
+  if (baseY - height * 1.2 - 40 > H) return;
+  c.beginPath(); c.moveTo(-10, H + 10);
+  for (let x = -10; x <= W + 10; x += 8) c.lineTo(x, baseY - hillH(x, s) * height);
+  c.lineTo(W + 10, H + 10); c.closePath();
+  const g = c.createLinearGradient(0, baseY - height, 0, baseY + 60);
+  g.addColorStop(0, rgb(shadeC(col, 0.08))); g.addColorStop(1, rgb(shadeC(col, -0.35)));
+  c.fillStyle = g; c.fill();
+  const gy = x => baseY - hillH(x, s) * height + 3;
+  // mavzu belgilari
+  if (themeKey === 'uz') drawMadrasa(c, W * 0.3, gy(W * 0.3), 0.9);
+  else if (themeKey === 'cn') { drawWall(c, 14, 170, gy); drawPagoda(c, W * 0.74, gy(W * 0.74), 0.9); }
+  else if (themeKey === 'jp') { drawTorii(c, W * 0.3, gy(W * 0.3), 0.85); drawPagoda(c, W * 0.8, gy(W * 0.8), 0.7); }
+  else if (themeKey === 'misr') drawPyramids(c, W * 0.35, gy(W * 0.35), 1);
+  else if (themeKey === 'hind') drawTemple(c, W * 0.7, gy(W * 0.7), 0.95);
+  // daraxtlar
+  for (let i = 0; i < 36; i++) {
+    const x = i * 12.5 + hash(i + s) * 8 - 6;
+    const y = gy(x);
+    const th = 13 + hash(i * 3 + s) * 17;
+    const hv = hash(i * 5 + s);
+    if (themeKey === 'uz' && i % 3 === 0 && zi < 2) { drawPoplar(c, x, y, th * 1.5, zi); continue; }
+    if (themeKey === 'us' && hv < 0.3 && zi === 0) { drawCactus(c, x, y, th * 0.9); continue; }
+    if (themeKey === 'jp' && hv < 0.5 && zi < 2) { drawSakura(c, x, y, th, zi); continue; }
+    if ((themeKey === 'misr' || themeKey === 'hind') && hv < 0.45 && zi < 2) { drawPalm(c, x, y, th * 1.3); continue; }
+    const autumnLeaf = zi === 1 && hv < 0.6;
+    if (autumnLeaf) {
+      c.strokeStyle = '#4a3020'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(x, y); c.lineTo(x, y - th * 0.5); c.stroke();
+      c.fillStyle = hash(i * 7) < 0.5 ? '#c8722a' : '#d9a238';
+      c.beginPath(); c.ellipse(x, y - th * 0.62, th * 0.3, th * 0.36, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = 'rgba(255,230,170,.25)'; c.beginPath(); c.ellipse(x - th * 0.08, y - th * 0.72, th * 0.14, th * 0.16, 0, 0, Math.PI * 2); c.fill();
+    } else {
+      const dark = zi >= 2 ? '#3b5246' : '#28502f', light = zi >= 2 ? '#4b6658' : '#376a3d';
+      for (let t = 0; t < 3; t++) {
+        const ty = y - th * (0.25 + t * 0.27), tw = th * (0.34 - t * 0.08);
+        c.fillStyle = t % 2 ? light : dark;
+        c.beginPath(); c.moveTo(x, ty - th * 0.36); c.lineTo(x + tw, ty); c.lineTo(x - tw, ty); c.closePath(); c.fill();
+        if (zi >= 2) {
+          c.fillStyle = 'rgba(245,249,252,.95)';
+          c.beginPath(); c.moveTo(x, ty - th * 0.36); c.lineTo(x + tw * 0.55, ty - th * 0.14); c.lineTo(x - tw * 0.55, ty - th * 0.14); c.closePath(); c.fill();
+        }
+      }
+    }
+  }
+}
+
+// ---- Mavzu belgilari (x, y = yer chizig'i, k = o'lcham) ----
+function drawMadrasa(c, x, y, k) {
+  c.save(); c.translate(x, y); c.scale(k, k);
+  const brick = '#cfa77d', dark = '#b48a62', tile = '#27a3a0';
+  for (const mx of [-36, 36]) {
+    c.fillStyle = brick; c.fillRect(mx - 3.5, -64, 7, 64);
+    c.fillStyle = tile; c.fillRect(mx - 4.5, -52, 9, 3); c.fillRect(mx - 4.5, -34, 9, 2);
+    c.fillStyle = dark; c.fillRect(mx - 5, -67, 10, 3);
+    c.fillStyle = tile; c.beginPath(); c.moveTo(mx - 4, -67); c.quadraticCurveTo(mx, -76, mx + 4, -67); c.fill();
+  }
+  c.fillStyle = brick; c.fillRect(-30, -34, 60, 34);
+  // gumbaz
+  c.fillStyle = dark; c.fillRect(6, -44, 22, 10);
+  const dg = c.createLinearGradient(6, 0, 28, 0); dg.addColorStop(0, '#5fd0cb'); dg.addColorStop(0.5, '#2aa5a0'); dg.addColorStop(1, '#16716e');
+  c.fillStyle = dg; c.beginPath(); c.moveTo(6, -44); c.bezierCurveTo(6, -62, 28, -62, 28, -44); c.fill();
+  c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 0.6;
+  for (const rx of [11, 17, 23]) { c.beginPath(); c.moveTo(rx, -44); c.quadraticCurveTo(17 + (rx - 17) * 0.4, -60, 17, -57); c.stroke(); }
+  // peshtoq
+  c.fillStyle = '#c69e74'; c.fillRect(-14, -48, 28, 48);
+  c.fillStyle = tile; c.fillRect(-14, -48, 28, 3); c.fillRect(-14, -48, 3, 48); c.fillRect(11, -48, 3, 48);
+  c.fillStyle = '#1d5f78'; c.beginPath(); c.moveTo(-8, 0); c.lineTo(-8, -26); c.quadraticCurveTo(0, -40, 8, -26); c.lineTo(8, 0); c.fill();
+  c.restore();
+}
+function drawPagoda(c, x, y, k) {
+  c.save(); c.translate(x, y); c.scale(k, k);
+  for (let i = 0; i < 5; i++) {
+    const w = 30 - i * 4.5, by = -i * 13;
+    c.fillStyle = '#8f2a1d'; c.fillRect(-w * 0.32, by - 10, w * 0.64, 10);
+    c.fillStyle = '#2f3b36';
+    c.beginPath(); c.moveTo(-w * 0.5 - 4, by - 9); c.quadraticCurveTo(-w * 0.3, by - 10, -w * 0.25, by - 14);
+    c.lineTo(w * 0.25, by - 14); c.quadraticCurveTo(w * 0.3, by - 10, w * 0.5 + 4, by - 9); c.lineTo(w * 0.5, by - 11); c.lineTo(-w * 0.5, by - 11); c.closePath(); c.fill();
+  }
+  c.strokeStyle = '#2f3b36'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(0, -66); c.lineTo(0, -78); c.stroke();
+  c.restore();
+}
+function drawWall(c, x0, x1, gy) {
+  c.fillStyle = '#b9a688'; c.strokeStyle = 'rgba(70,55,35,.5)'; c.lineWidth = 0.6;
+  for (let x = x0; x < x1; x += 6) {
+    const y = gy(x) - 2;
+    c.fillRect(x, y - 8, 6.4, 10);
+    if ((x / 6 | 0) % 2 === 0) c.fillRect(x, y - 11, 3.5, 3);
+  }
+  c.fillStyle = '#a4917a';
+  for (const tx of [x0 + 10, x0 + 110]) { const y = gy(tx) - 2; c.fillRect(tx - 6, y - 20, 14, 22); c.fillRect(tx - 7, y - 23, 16, 3); }
+}
+function drawTorii(c, x, y, k) {
+  c.save(); c.translate(x, y); c.scale(k, k);
+  c.fillStyle = '#c8321e';
+  c.fillRect(-18, -42, 4.5, 42); c.fillRect(13.5, -42, 4.5, 42);
+  c.fillRect(-22, -34, 44, 3.5);
+  c.fillRect(-1.5, -40, 3, 6);
+  c.fillStyle = '#1e1a1a';
+  c.beginPath(); c.moveTo(-28, -42); c.quadraticCurveTo(0, -46, 28, -42); c.lineTo(30, -47); c.quadraticCurveTo(0, -51, -30, -47); c.closePath(); c.fill();
+  c.restore();
+}
+function drawPoplar(c, x, y, h, zi) {
+  c.strokeStyle = '#5a4430'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(x, y); c.lineTo(x, y - h * 0.2); c.stroke();
+  c.fillStyle = zi === 1 ? '#d6a43c' : '#2f6a36';
+  c.beginPath(); c.ellipse(x, y - h * 0.58, h * 0.11, h * 0.42, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.12)'; c.beginPath(); c.ellipse(x - h * 0.03, y - h * 0.62, h * 0.04, h * 0.3, 0, 0, Math.PI * 2); c.fill();
+}
+function drawCactus(c, x, y, h) {
+  c.strokeStyle = '#4c7a3a'; c.lineCap = 'round';
+  c.lineWidth = h * 0.16; c.beginPath(); c.moveTo(x, y); c.lineTo(x, y - h); c.stroke();
+  c.lineWidth = h * 0.11;
+  c.beginPath(); c.moveTo(x, y - h * 0.45); c.lineTo(x - h * 0.28, y - h * 0.45); c.lineTo(x - h * 0.28, y - h * 0.75); c.stroke();
+  c.beginPath(); c.moveTo(x, y - h * 0.6); c.lineTo(x + h * 0.25, y - h * 0.6); c.lineTo(x + h * 0.25, y - h * 0.85); c.stroke();
+  c.lineCap = 'butt';
+}
+function drawPyramids(c, x, y, k) {
+  c.save(); c.translate(x, y); c.scale(k, k);
+  for (const [px, s] of [[-30, 0.7], [18, 1], [62, 0.55]]) {
+    const w = 60 * s, h = 46 * s;
+    c.fillStyle = '#d9b77a'; c.beginPath(); c.moveTo(px - w / 2, 0); c.lineTo(px, -h); c.lineTo(px + w / 2, 0); c.closePath(); c.fill();
+    c.fillStyle = '#ad8750'; c.beginPath(); c.moveTo(px, -h); c.lineTo(px + w / 2, 0); c.lineTo(px + w * 0.12, 0); c.closePath(); c.fill();
+  }
+  c.restore();
+}
+function drawPalm(c, x, y, h) {
+  const tx = x + h * 0.06, ty = y - h;
+  c.strokeStyle = '#7a5a36'; c.lineWidth = 2; c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + h * 0.14, y - h * 0.5, tx, ty); c.stroke();
+  c.strokeStyle = '#3f7a34'; c.lineWidth = 2.2; c.lineCap = 'round';
+  for (const a of [-2.7, -2.1, -1.5, -0.95, -0.4]) {
+    c.beginPath(); c.moveTo(tx, ty);
+    c.quadraticCurveTo(tx + Math.cos(a) * h * 0.32, ty + Math.sin(a) * h * 0.22, tx + Math.cos(a) * h * 0.46, ty + Math.sin(a) * h * 0.05 + h * 0.14);
+    c.stroke();
+  }
+  c.lineCap = 'butt';
+}
+function drawTemple(c, x, y, k) {
+  c.save(); c.translate(x, y); c.scale(k, k);
+  c.fillStyle = '#c98f5a'; c.fillRect(-30, -10, 60, 10);
+  c.fillStyle = '#d9a46c'; c.fillRect(-22, -26, 44, 16);
+  c.fillStyle = '#e0ae74';
+  c.beginPath(); c.moveTo(-14, -26); c.bezierCurveTo(-14, -48, -6, -62, 0, -66); c.bezierCurveTo(6, -62, 14, -48, 14, -26); c.closePath(); c.fill();
+  c.strokeStyle = 'rgba(120,70,30,.45)'; c.lineWidth = 0.8;
+  for (let i = 1; i < 6; i++) { const yy = -26 - i * 7, ww = 14 - i * 2.1; c.beginPath(); c.moveTo(-ww, yy); c.lineTo(ww, yy); c.stroke(); }
+  c.fillStyle = '#c98f5a'; c.beginPath(); c.ellipse(0, -67, 4, 1.8, 0, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#5a3a20'; c.lineWidth = 1; c.beginPath(); c.moveTo(0, -68); c.lineTo(0, -78); c.stroke();
+  c.fillStyle = '#e8732a'; c.beginPath(); c.moveTo(0, -78); c.lineTo(9, -75); c.lineTo(0, -72); c.closePath(); c.fill();
+  c.fillStyle = '#7a4a26'; c.fillRect(-4, -20, 8, 10);
+  c.restore();
+}
+function drawSakura(c, x, y, h, zi) {
+  c.strokeStyle = '#4a3226'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(x, y); c.lineTo(x + 1, y - h * 0.45); c.stroke();
+  const cols = zi === 1 ? ['#d98a4a', '#e8b35a'] : ['#f3a6c0', '#f8c8d8'];
+  for (const [dx, dy, r, ci] of [[-h * 0.22, -h * 0.5, 0.26, 0], [h * 0.2, -h * 0.55, 0.24, 1], [0, -h * 0.72, 0.28, 1], [-h * 0.05, -h * 0.55, 0.22, 0]]) {
+    c.fillStyle = cols[ci]; c.beginPath(); c.arc(x + dx, y + dy, h * r, 0, Math.PI * 2); c.fill();
+  }
+}
+
+function clouds(c, par, spacing, alpha, seed) {
+  if (alpha <= 0.02) return;
+  c.globalAlpha = alpha;
+  parallax(spacing, par, (k, sy) => {
+    const spr = CLOUDS[Math.floor(hash(k + seed) * CLOUDS.length) % CLOUDS.length];
+    const s = 0.45 + hash(k * 7 + seed) * 0.6;
+    const x = hash(k + seed * 3) * (W + 200) - 100 + Math.sin(NOW * 0.05 + k) * 20;
+    c.drawImage(spr, x - spr.width * s / 2, sy - spr.height * s / 2, spr.width * s, spr.height * s);
+  });
+  c.globalAlpha = 1;
+}
+
+function drawBackground(c, env, zi) {
+  const g = c.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, rgb(env.top)); g.addColorStop(1, rgb(env.bot));
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  // quyosh
+  const sx = W - 96, sy = 120, sun = env.sun, sa = env.sunA;
+  const sg = c.createRadialGradient(sx, sy, 0, sx, sy, 150);
+  sg.addColorStop(0, rgb(sun, 0.9 * sa)); sg.addColorStop(0.1, rgb(sun, 0.7 * sa)); sg.addColorStop(0.3, rgb(sun, 0.22 * sa)); sg.addColorStop(1, rgb(sun, 0));
+  c.fillStyle = sg; c.fillRect(sx - 150, sy - 150, 300, 300);
+  c.fillStyle = `rgba(255,255,250,${0.95 * sa})`; circ(c, sx, sy, 16);
+  const climb = -VY - H * 0.72;
+  const th = THEMES[themeKey], mix = (col, k) => th.tint ? col.map((v, i) => v + (th.tint[i] - v) * k) : col;
+  const farSnow = th.far === 'mesa' || th.far === 'dunes' ? env.snow * 0.8 - 0.25 : 0.3 + env.snow * 0.55;
+  mountain(c, H * 0.66 + climb * 0.05, 250, 1.7, mix(env.far, 0.5), clamp(farSnow, 0, 0.95), th.far === 'mesa' ? 3 : 6, th.far);
+  clouds(c, 0.16, 300, env.cloud * 0.85, 11);
+  mountain(c, H * 0.8 + climb * 0.13, 150, 4.2, mix(env.mid, 0.25), clamp(env.snow * 0.9 - 0.12, 0, 0.95), 8, 'jagged');
+  hills(c, H * 0.75 + climb * 0.26, 64, 2.9, env.near, zi);
+  clouds(c, 0.34, 430, env.cloud * 0.7, 37);
+}
+
+// ================= Platforma teksturalari =================
+function drawWood(c, w, r) {
+  const h = PLAT_H, top = 5;
+  rr(c, 0, 0, w, h, 3);
+  const g = c.createLinearGradient(0, top, 0, h);
+  g.addColorStop(0, '#93603a'); g.addColorStop(1, '#5a381f');
+  c.fillStyle = g; c.fill();
+  c.save(); rr(c, 0, 0, w, h, 3); c.clip();
+  const tg = c.createLinearGradient(0, 0, 0, top);
+  tg.addColorStop(0, '#cf9b6b'); tg.addColorStop(1, '#a8754a');
+  c.fillStyle = tg; c.fillRect(0, 0, w, top);
+  c.fillStyle = 'rgba(40,20,8,.35)'; c.fillRect(0, top, w, 0.8);
+  for (let i = 0; i < 10; i++) {
+    const y0 = top + 1.5 + r() * (h - top - 3), amp = 0.5 + r() * 1.4, f = 0.03 + r() * 0.05, ph = r() * 6;
+    c.strokeStyle = `rgba(45,25,10,${0.15 + r() * 0.25})`; c.lineWidth = 0.5 + r() * 0.6;
+    c.beginPath(); for (let x = 0; x <= w; x += 3) { const y = y0 + Math.sin(x * f + ph) * amp; x ? c.lineTo(x, y) : c.moveTo(x, y); } c.stroke();
+  }
+  for (let i = 0; i < 4; i++) {
+    const y0 = 1 + r() * (top - 2), ph = r() * 6;
+    c.strokeStyle = 'rgba(255,232,200,.22)'; c.lineWidth = 0.5;
+    c.beginPath(); for (let x = 0; x <= w; x += 4) { const y = y0 + Math.sin(x * 0.05 + ph) * 0.5; x ? c.lineTo(x, y) : c.moveTo(x, y); } c.stroke();
+  }
+  for (let k = 0; k < (w > 95 ? 2 : 1); k++) {
+    const kx = 12 + r() * (w - 24), ky = top + 4 + r() * (h - top - 8);
+    for (let ring = 3; ring >= 1; ring--) {
+      c.strokeStyle = `rgba(50,28,12,${0.22 + 0.15 * (3 - ring)})`; c.lineWidth = 0.7;
+      c.beginPath(); c.ellipse(kx, ky, ring * 2.3, ring * 1.1, 0, 0, Math.PI * 2); c.stroke();
+    }
+    c.fillStyle = 'rgba(40,22,10,.6)'; c.beginPath(); c.ellipse(kx, ky, 1.6, 0.9, 0, 0, Math.PI * 2); c.fill();
+  }
+  const n = Math.max(1, Math.round(w / 55));
+  for (let i = 1; i < n; i++) {
+    const sx = w * i / n + (r() - 0.5) * 6;
+    c.fillStyle = 'rgba(30,15,5,.6)'; c.fillRect(sx, 0, 1.2, h);
+    c.fillStyle = 'rgba(255,220,180,.18)'; c.fillRect(sx + 1.2, 0, 0.8, h);
+  }
+  c.restore();
+  c.strokeStyle = 'rgba(255,236,212,.4)'; c.lineWidth = 0.9; c.beginPath(); c.moveTo(3, 0.8); c.lineTo(w - 3, 0.8); c.stroke();
+  c.strokeStyle = 'rgba(28,14,5,.65)'; c.lineWidth = 1; rr(c, 0.5, 0.5, w - 1, h - 1, 3); c.stroke();
+  for (const nx of [6, w - 6]) {
+    const ny = top + 6.5;
+    const ng = c.createRadialGradient(nx - 0.5, ny - 0.5, 0.2, nx, ny, 1.9);
+    ng.addColorStop(0, '#f0f0f0'); ng.addColorStop(1, '#45464a');
+    c.fillStyle = ng; c.beginPath(); c.arc(nx, ny, 1.7, 0, Math.PI * 2); c.fill();
+  }
+}
+
+function drawStone(c, w, r, wet, moss) {
+  const h = PLAT_H;
+  const pts = [[0, 3], [2.5, 0.4]];
+  for (let x = 9; x < w - 8; x += 9 + r() * 9) pts.push([x, r() * 0.9]);
+  pts.push([w - 2.5, 0.4], [w, 3], [w + 1 - r() * 2, h * 0.55]);
+  for (let x = w - 5; x > 5; x -= 7 + r() * 9) pts.push([x, h - 2 + r() * 11]);
+  pts.push([r() * 2 - 1, h * 0.55]);
+  const path = () => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); };
+  const pal = wet ? ['#7a8087', '#474c53', '#24272b'] : ['#aca79d', '#7e7a72', '#423f3a'];
+  const g = c.createLinearGradient(0, 0, 0, h + 10);
+  g.addColorStop(0, pal[0]); g.addColorStop(0.45, pal[1]); g.addColorStop(1, pal[2]);
+  path(); c.fillStyle = g; c.fill();
+  c.save(); path(); c.clip();
+  for (let i = 0; i < 8; i++) {
+    const x = r() * w, y = 4 + r() * (h + 4), s = 6 + r() * 12;
+    c.fillStyle = r() < 0.5 ? `rgba(255,255,255,${0.04 + r() * 0.07})` : `rgba(0,0,0,${0.06 + r() * 0.12})`;
+    c.beginPath(); c.moveTo(x, y); c.lineTo(x + s, y + r() * 6 - 3); c.lineTo(x + s * 0.4, y + s * 0.6); c.closePath(); c.fill();
+  }
+  for (let i = 0; i < w * 2.4; i++) {
+    const x = r() * w, y = r() * (h + 10), s = 0.5 + r() * 1.1;
+    c.fillStyle = r() < 0.5 ? `rgba(255,255,255,${0.05 + r() * 0.14})` : `rgba(0,0,0,${0.08 + r() * 0.18})`;
+    c.fillRect(x, y, s, s);
+  }
+  for (let k = 0; k < 2; k++) {
+    let x = 8 + r() * (w - 16), y = 1.5;
+    c.beginPath(); c.moveTo(x, y);
+    for (let i = 0; i < 4; i++) { x += (r() - 0.5) * 8; y += 2 + r() * 4; c.lineTo(x, y); }
+    c.strokeStyle = 'rgba(20,18,16,.55)'; c.lineWidth = 0.8; c.stroke();
+    c.save(); c.translate(0.8, 0.6); c.strokeStyle = 'rgba(255,255,255,.13)'; c.stroke(); c.restore();
+  }
+  const tg = c.createLinearGradient(0, 0, 0, 5);
+  tg.addColorStop(0, 'rgba(255,255,255,.3)'); tg.addColorStop(1, 'rgba(255,255,255,0)');
+  c.fillStyle = tg; c.fillRect(0, 0, w, 5);
+  if (wet) {
+    for (let i = 0; i < 6; i++) {
+      const x = r() * w;
+      c.strokeStyle = `rgba(220,235,255,${0.2 + r() * 0.3})`; c.lineWidth = 0.8;
+      c.beginPath(); c.moveTo(x, 3); c.lineTo(x + 2 + r() * 3, 8 + r() * 10); c.stroke();
+    }
+  }
+  c.restore();
+  path(); c.strokeStyle = 'rgba(22,20,18,.6)'; c.lineWidth = 0.9; c.stroke();
+  c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(3, 0.9); c.lineTo(w - 3, 0.9); c.stroke();
+  if (wet) {
+    const px = 10 + r() * (w - 44), pw = 16 + r() * 18;
+    c.fillStyle = 'rgba(140,172,204,.7)'; c.beginPath(); c.ellipse(px + pw / 2, 1.2, pw / 2, 1.6, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.75)'; c.fillRect(px + pw * 0.3, 0.4, pw * 0.35, 0.7);
+    for (let i = 0; i < 3; i++) {
+      const dx = 8 + r() * (w - 16), dy = h + 13 + r() * 6;
+      const dg = c.createRadialGradient(dx - 0.4, dy - 0.4, 0.1, dx, dy, 1.8);
+      dg.addColorStop(0, 'rgba(230,245,255,.95)'); dg.addColorStop(1, 'rgba(120,170,220,.6)');
+      c.fillStyle = dg; c.beginPath(); c.arc(dx, dy, 1.5, 0, Math.PI * 2); c.fill();
+    }
+  }
+  if (moss) {
+    for (let i = 0; i < 4 + w / 25; i++) {
+      const mx = r() * w, my = r() * 3, mr = 3 + r() * 6;
+      const mg = c.createRadialGradient(mx, my, 0, mx, my, mr);
+      mg.addColorStop(0, 'rgba(112,152,62,.95)'); mg.addColorStop(0.7, 'rgba(80,125,45,.6)'); mg.addColorStop(1, 'rgba(60,100,40,0)');
+      c.fillStyle = mg; c.beginPath(); c.ellipse(mx, my, mr, mr * 0.55, 0, 0, Math.PI * 2); c.fill();
+    }
+  }
+}
+
+function drawIce(c, w, r) {
+  const h = PLAT_H + 2;
+  const pts = [[0, 1.5], [2, 0], [w - 2, 0], [w, 1.5], [w - 1 + r() * 2, h * 0.7], [w - 3, h]];
+  for (let x = w - 10; x > 8; x -= 10 + r() * 12) pts.push([x, h + r() * 3]);
+  pts.push([3, h], [1 - r() * 2, h * 0.7]);
+  const path = () => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); };
+  const g = c.createLinearGradient(0, 0, 0, h + 3);
+  g.addColorStop(0, 'rgba(240,252,255,.97)'); g.addColorStop(0.35, 'rgba(178,224,245,.93)'); g.addColorStop(1, 'rgba(92,158,210,.9)');
+  path(); c.fillStyle = g; c.fill();
+  c.save(); path(); c.clip();
+  for (let i = 0; i < 4; i++) {
+    const x = r() * w, y = 6 + r() * h, rad = 8 + r() * 14;
+    const bg = c.createRadialGradient(x, y, 0, x, y, rad);
+    bg.addColorStop(0, 'rgba(50,120,185,.28)'); bg.addColorStop(1, 'rgba(50,120,185,0)');
+    c.fillStyle = bg; c.fillRect(x - rad, y - rad, rad * 2, rad * 2);
+  }
+  for (let i = 0; i < 3; i++) {
+    const x = r() * w;
+    c.strokeStyle = `rgba(255,255,255,${0.18 + r() * 0.22})`; c.lineWidth = 2 + r() * 3;
+    c.beginPath(); c.moveTo(x, h + 2); c.lineTo(x + 11, -1); c.stroke();
+  }
+  for (let k = 0; k < 3; k++) {
+    let x = r() * w, y = 2 + r() * 6;
+    c.beginPath(); c.moveTo(x, y);
+    for (let i = 0; i < 4; i++) { x += (r() - 0.5) * 12; y += 1 + r() * 4; c.lineTo(x, y); }
+    c.strokeStyle = 'rgba(40,100,150,.3)'; c.lineWidth = 0.9; c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,.75)'; c.lineWidth = 0.5; c.stroke();
+  }
+  for (let i = 0; i < w / 7; i++) {
+    c.strokeStyle = 'rgba(255,255,255,.6)'; c.lineWidth = 0.5;
+    c.beginPath(); c.arc(r() * w, 4 + r() * (h - 4), 0.5 + r() * 1.2, 0, Math.PI * 2); c.stroke();
+  }
+  c.restore();
+  path(); c.strokeStyle = 'rgba(60,120,170,.55)'; c.lineWidth = 0.9; c.stroke();
+  c.strokeStyle = 'rgba(255,255,255,.95)'; c.lineWidth = 1.3; c.beginPath(); c.moveTo(2, 0.7); c.lineTo(w - 2, 0.7); c.stroke();
+  for (let x = 4 + r() * 6; x < w - 4; x += 6 + r() * 11) {
+    const L = 5 + r() * 15, iw = 1.5 + r() * 1.8, y0 = h - 1;
+    const ig = c.createLinearGradient(0, y0, 0, y0 + L);
+    ig.addColorStop(0, 'rgba(222,246,255,.95)'); ig.addColorStop(1, 'rgba(170,220,245,.35)');
+    c.fillStyle = ig; c.beginPath(); c.moveTo(x - iw, y0); c.lineTo(x + iw, y0); c.lineTo(x + (r() - 0.5), y0 + L); c.closePath(); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,.6)'; c.lineWidth = 0.4; c.beginPath(); c.moveTo(x - iw * 0.4, y0 + 1); c.lineTo(x, y0 + L * 0.8); c.stroke();
+  }
+}
+
+function drawSnowCap(c, w, r) {
+  c.beginPath(); c.moveTo(-3, 5); c.lineTo(-3, 0);
+  for (let x = -3; x < w + 3; x += 7) { const nx = Math.min(w + 3, x + 7); c.quadraticCurveTo(x + 3.5, -7 - r() * 2.5, nx, -4 + r() * 1.5); }
+  c.lineTo(w + 3, 5);
+  for (let x = w; x >= 0; x -= 6 + r() * 6) { const d = r() < 0.35 ? 3 + r() * 5 : 0; c.quadraticCurveTo(x - 2, 6 + d, x - 5, 5); }
+  c.closePath();
+  const g = c.createLinearGradient(0, -7, 0, 9);
+  g.addColorStop(0, '#ffffff'); g.addColorStop(0.55, '#eef5fc'); g.addColorStop(1, '#bfd3e8');
+  c.fillStyle = g; c.fill();
+  c.strokeStyle = 'rgba(120,150,185,.45)'; c.lineWidth = 0.8; c.stroke();
+  for (let i = 0; i < w / 4; i++) {
+    c.fillStyle = r() < 0.6 ? 'rgba(255,255,255,1)' : 'rgba(170,200,230,.7)';
+    c.fillRect(r() * w, -4 + r() * 7, 0.9, 0.9);
+  }
+}
+
+function platTex(p) {
+  if (p.tex && p.texScale === texScale) return p.tex;
+  const cw = p.w + TEX_X * 2, ch = PLAT_H + TEX_TOP + TEX_BOT;
+  const cv = makeCanvas(cw * texScale, ch * texScale), c = cv.getContext('2d');
+  c.scale(texScale, texScale); c.translate(TEX_X, TEX_TOP);
+  const r = rng(p.seed);
+  if (p.type === 'wood') drawWood(c, p.w, r);
+  else if (p.type === 'stone') drawStone(c, p.w, r, false, p.moss);
+  else if (p.type === 'wet') drawStone(c, p.w, r, true, false);
+  else if (p.type === 'ice') drawIce(c, p.w, r);
+  else if (p.type === 'snow') { if (p.base === 'wood') drawWood(c, p.w, r); else drawStone(c, p.w, r, false, false); drawSnowCap(c, p.w, r); }
+  p.tex = cv; p.texScale = texScale;
+  return cv;
+}
+
+let groundTex = null, groundTexScale = 0;
+function getGroundTex() {
+  if (groundTex && groundTexScale === texScale) return groundTex;
+  const gw = W + 40, gh = 290, cv = makeCanvas(gw * texScale, gh * texScale), c = cv.getContext('2d');
+  c.scale(texScale, texScale); c.translate(0, 16);
+  const r = rng(777);
+  const sg = c.createLinearGradient(0, 0, 0, 270);
+  sg.addColorStop(0, '#6b4a2b'); sg.addColorStop(0.25, '#553820'); sg.addColorStop(1, '#2e1d10');
+  c.fillStyle = sg; c.fillRect(0, 0, gw, 274);
+  for (let i = 0; i < 1600; i++) {
+    c.fillStyle = r() < 0.5 ? `rgba(255,220,170,${0.04 + r() * 0.08})` : `rgba(0,0,0,${0.08 + r() * 0.15})`;
+    c.fillRect(r() * gw, 8 + r() * 262, 0.6 + r(), 0.6 + r());
+  }
+  for (let i = 0; i < 36; i++) {
+    const x = r() * gw, y = 20 + r() * 240, rx = 2 + r() * 6, ry = rx * (0.5 + r() * 0.3);
+    const pg = c.createRadialGradient(x - rx * 0.3, y - ry * 0.4, 0.3, x, y, rx);
+    pg.addColorStop(0, '#b7b0a3'); pg.addColorStop(1, '#5d574e');
+    c.fillStyle = pg; c.beginPath(); c.ellipse(x, y, rx, ry, r() * 3, 0, Math.PI * 2); c.fill();
+  }
+  for (let i = 0; i < 8; i++) {
+    let x = r() * gw, y = 8;
+    c.strokeStyle = 'rgba(40,25,12,.6)'; c.lineWidth = 0.8 + r();
+    c.beginPath(); c.moveTo(x, y);
+    for (let k = 0; k < 5; k++) { x += (r() - 0.5) * 14; y += 4 + r() * 8; c.lineTo(x, y); }
+    c.stroke();
+  }
+  const gg = c.createLinearGradient(0, -2, 0, 11);
+  gg.addColorStop(0, '#72b84c'); gg.addColorStop(1, '#3b7a2b');
+  c.fillStyle = gg; c.fillRect(0, -1, gw, 10);
+  for (let i = 0; i < gw * 2.4; i++) {
+    const x = r() * gw, hgt = 5 + r() * 12, lean = (r() - 0.5) * 7;
+    c.strokeStyle = `hsl(${92 + r() * 34},${42 + r() * 22}%,${26 + r() * 24}%)`; c.lineWidth = 0.7 + r() * 0.8;
+    c.beginPath(); c.moveTo(x, 5); c.quadraticCurveTo(x + lean * 0.3, 5 - hgt * 0.6, x + lean, 5 - hgt); c.stroke();
+  }
+  const fl = ['#ffffff', '#ffd84a', '#e86aa5', '#b38cff'];
+  for (let i = 0; i < 16; i++) {
+    const x = r() * gw, y = -4 - r() * 7;
+    c.fillStyle = fl[Math.floor(r() * fl.length)]; circ(c, x, y, 1.4);
+    c.fillStyle = '#f7d046'; circ(c, x, y, 0.5);
+  }
+  groundTex = cv; groundTexScale = texScale;
+  return cv;
+}
+
+function drawPlatform(c, p) {
+  if (p.type === 'ground') {
+    c.drawImage(getGroundTex(), -20, p.y - 16, W + 40, 290);
+    c.fillStyle = '#2e1d10'; c.fillRect(-20, p.y + 272, W + 40, 3000);
+    return;
+  }
+  c.drawImage(platTex(p), p.x - TEX_X, p.y - TEX_TOP, p.w + TEX_X * 2, PLAT_H + TEX_TOP + TEX_BOT);
+  if (p.cp) drawFlag(c, p);
+}
+
+function drawFlag(c, p) {
+  const fx = p.x + p.w - 20, fy = p.y - (p.type === 'snow' ? 3 : 0);
+  const pg = c.createLinearGradient(fx - 1.5, 0, fx + 1.5, 0);
+  pg.addColorStop(0, '#5f6166'); pg.addColorStop(0.5, '#e8eaee'); pg.addColorStop(1, '#4b4d52');
+  c.fillStyle = pg; c.fillRect(fx - 1.5, fy - 64, 3, 64);
+  c.fillStyle = '#d8b24a'; circ(c, fx, fy - 65, 2.6);
+  const base = p.active ? [62, 190, 88] : [222, 66, 56];
+  const L = 34, Hh = 20, t = NOW * 3.2, top = fy - 62;
+  const wave = u => Math.sin(t - u * 4) * 2.6 * u;
+  c.beginPath(); c.moveTo(fx + 1.5, top);
+  for (let i = 0; i <= 12; i++) { const u = i / 12; c.lineTo(fx + 1.5 + u * L, top + wave(u)); }
+  for (let i = 12; i >= 0; i--) { const u = i / 12; c.lineTo(fx + 1.5 + u * L, top + Hh + wave(u) - u * 2); }
+  c.closePath();
+  const cg = c.createLinearGradient(fx, 0, fx + L, 0);
+  for (let i = 0; i <= 6; i++) { const u = i / 6; cg.addColorStop(u, rgb(shadeC(base, Math.cos(t - u * 4) * 0.22 * u))); }
+  c.fillStyle = cg; c.fill();
+  c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = 0.6; c.stroke();
+}
+
+// ================= Baklashka =================
+function bottlePath(c, L) {
+  const hw = L.bw / 2, cw = L.capw / 2, top = -L.bh / 2, bot = L.bh / 2, sh = top + L.neck, nk = top + 9;
+  c.beginPath();
+  c.moveTo(-hw + 6, bot); c.lineTo(hw - 6, bot);
+  c.quadraticCurveTo(hw, bot, hw, bot - 6);
+  c.lineTo(hw, sh + 8);
+  c.quadraticCurveTo(hw, sh, cw, nk + 5);
+  c.lineTo(cw, nk); c.lineTo(-cw, nk); c.lineTo(-cw, nk + 5);
+  c.quadraticCurveTo(-hw, sh, -hw, sh + 8);
+  c.lineTo(-hw, bot - 6);
+  c.quadraticCurveTo(-hw, bot, -hw + 6, bot);
+  c.closePath();
+}
+
+const grad4 = (c, x0, x1, cols) => { const g = c.createLinearGradient(x0, 0, x1, 0); g.addColorStop(0, cols[0]); g.addColorStop(0.35, cols[1]); g.addColorStop(0.6, cols[2]); g.addColorStop(1, cols[3]); return g; };
+
+// Choynak, ko'za, termos: tanasi shakli (to'qnashuv uchun baribir bw/bh o'lchamlari ishlatiladi)
+function vesselPath(c, L) {
+  const hw = L.bw / 2, top = -L.bh / 2, bot = L.bh / 2;
+  if (L.kind === 'termos') { rr(c, -hw, top + 12, L.bw, L.bh - 12, 4); return; }
+  c.beginPath();
+  if (L.kind === 'choynak') {
+    const lt = top + 10;
+    c.moveTo(-hw * 0.62, bot);
+    c.bezierCurveTo(-hw * 1.15, bot - 4, -hw * 1.12, lt + 6, -hw * 0.6, lt);
+    c.lineTo(hw * 0.6, lt);
+    c.bezierCurveTo(hw * 1.12, lt + 6, hw * 1.15, bot - 4, hw * 0.62, bot);
+  } else {
+    const nk = top + L.neck, cw = L.capw / 2;
+    c.moveTo(-hw, bot);
+    c.bezierCurveTo(-hw * 1.9, bot - 18, -hw * 1.6, nk + 6, -cw + 1, nk);
+    c.lineTo(-cw + 1, top + 3); c.lineTo(-cw - 1.5, top); c.lineTo(cw + 1.5, top); c.lineTo(cw - 1, top + 3);
+    c.lineTo(cw - 1, nk);
+    c.bezierCurveTo(hw * 1.6, nk + 6, hw * 1.9, bot - 18, hw, bot);
+  }
+  c.closePath();
+}
+function drawVessel(c, x, y, ang, s, L, frost) {
+  const hw = L.bw / 2, top = -L.bh / 2, bot = L.bh / 2;
+  c.save(); c.translate(x, y); c.rotate(ang); c.scale(s, s);
+  if (L.kind === 'choynak') {
+    // tutqich va jo'mrak
+    c.strokeStyle = '#eef1f6'; c.lineWidth = 3.2;
+    c.beginPath(); c.ellipse(-hw * 1.02, bot - 20, 6, 9, 0, Math.PI * 0.5, Math.PI * 1.5); c.stroke();
+    c.strokeStyle = '#1d4fa3'; c.lineWidth = 0.9; c.stroke();
+    c.fillStyle = '#eef1f6';
+    c.beginPath(); c.moveTo(hw * 0.85, bot - 12); c.quadraticCurveTo(hw * 1.35, bot - 16, hw * 1.55, top + 14);
+    c.lineTo(hw * 1.36, top + 13); c.quadraticCurveTo(hw * 1.12, bot - 22, hw * 0.8, bot - 23); c.closePath(); c.fill();
+    c.strokeStyle = '#8a9ab0'; c.lineWidth = 0.8; c.stroke();
+  }
+  vesselPath(c, L);
+  c.fillStyle = L.kind === 'choynak' ? grad4(c, -hw, hw, ['#d4dbe6', '#ffffff', '#f2f5f9', '#b3bfcf'])
+    : L.kind === 'koza' ? grad4(c, -hw * 1.6, hw * 1.6, ['#7e4220', '#c8743c', '#b2602e', '#653316'])
+    : grad4(c, -hw, hw, ['#646b73', '#e6eaee', '#a9b0b8', '#4f555c']);
+  c.fill();
+  c.save(); vesselPath(c, L); c.clip();
+  if (L.kind === 'choynak') {
+    // paxta naqshi
+    c.strokeStyle = '#1d4fa3'; c.fillStyle = '#1d4fa3'; c.lineWidth = 1.1;
+    for (const [px, py] of [[-9, bot - 15], [8, bot - 13], [-1, bot - 26]]) {
+      for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + 0.6; c.beginPath(); c.ellipse(px + Math.cos(a) * 3, py + Math.sin(a) * 3, 2.6, 1.5, a, 0, Math.PI * 2); c.stroke(); }
+      circ(c, px, py, 1.3);
+    }
+    c.fillStyle = '#d4a63a'; c.fillRect(-hw * 1.2, top + 11, L.bw * 1.2, 1.2);
+  } else if (L.kind === 'koza') {
+    c.strokeStyle = 'rgba(60,25,8,.6)'; c.lineWidth = 1.2;
+    for (const yy of [bot - 32, bot - 27]) { c.beginPath(); c.moveTo(-40, yy); c.lineTo(40, yy); c.stroke(); }
+    c.beginPath(); for (let xx = -20, i = 0; xx <= 20; xx += 4, i++) c.lineTo(xx, bot - 21 + (i % 2 ? 2.5 : -2.5)); c.stroke();
+    c.fillStyle = 'rgba(255,225,190,.2)'; c.fillRect(-hw * 1.25, top, 4, L.bh);
+  } else {
+    c.fillStyle = '#b8372a'; c.fillRect(-hw, bot - 26, L.bw, 8);
+    c.fillStyle = 'rgba(255,255,255,.6)'; c.fillRect(-hw + 4, top + 15, 2.4, L.bh - 22);
+  }
+  if (frost > 0) { c.fillStyle = `rgba(225,240,255,${0.6 * frost})`; c.fillRect(-60, -60, 120, 120); }
+  c.restore();
+  c.strokeStyle = L.kind === 'choynak' ? '#8a9ab0' : 'rgba(30,20,10,.6)'; c.lineWidth = 1; vesselPath(c, L); c.stroke();
+  if (L.kind === 'choynak') {
+    c.fillStyle = '#f7f9fc'; c.beginPath(); c.ellipse(0, top + 10, hw * 0.62, 4.5, 0, Math.PI, 0); c.fill();
+    c.strokeStyle = '#8a9ab0'; c.stroke();
+    c.fillStyle = '#1d4fa3'; circ(c, 0, top + 4, 3.6);
+  } else if (L.kind === 'termos') {
+    rr(c, -L.capw / 2, top, L.capw, 12, 3);
+    c.fillStyle = grad4(c, -L.capw / 2, L.capw / 2, ['#262a30', '#5d646d', '#3a3f46', '#1c1f23']); c.fill();
+    c.strokeStyle = 'rgba(0,0,0,.4)'; c.lineWidth = 0.6;
+    for (let i = -L.capw / 2 + 2; i < L.capw / 2 - 1; i += 2) { c.beginPath(); c.moveTo(i, top + 2); c.lineTo(i, top + 10); c.stroke(); }
+  }
+  c.restore();
+}
+
+// L = BOTTLES dagi ko'rinish; frost = 0..1 (muzlab borayotgan qirov)
+function drawBottle(c, x, y, ang, s, frozen, L = BOTTLES[bottleKey], frost = 0) {
+  if (L.kind) { drawVessel(c, x, y, ang, s, L, frost); return; }
+  const hw = L.bw / 2, top = -L.bh / 2, bot = L.bh / 2, bw = L.bw, bh = L.bh, nk = L.neck, cw = L.capw;
+  const pc = L.plastic || [110, 160, 200];
+  c.save(); c.translate(x, y); c.rotate(ang); c.scale(s, s);
+  bottlePath(c, L);
+  if (L.opaque) c.fillStyle = grad4(c, -hw, hw, L.opaque);
+  else {
+    const g = c.createLinearGradient(-hw, 0, hw, 0);
+    g.addColorStop(0, rgb(pc, 0.6)); g.addColorStop(0.18, 'rgba(225,240,250,.38)'); g.addColorStop(0.5, 'rgba(240,248,255,.2)');
+    g.addColorStop(0.82, rgb(shadeC(pc, 0.4), 0.32)); g.addColorStop(1, rgb(shadeC(pc, -0.1), 0.62));
+    c.fillStyle = g;
+  }
+  c.fill();
+  c.save(); bottlePath(c, L); c.clip();
+  // suyuqlik (sathi doim gorizontal)
+  if (L.liquid) {
+    c.save(); c.rotate(-ang);
+    const lvl = 4 + 5 * Math.abs(Math.cos(ang));
+    const wg = c.createLinearGradient(0, lvl, 0, lvl + 40);
+    if (frozen) { wg.addColorStop(0, 'rgba(236,246,255,.94)'); wg.addColorStop(1, 'rgba(182,212,238,.92)'); }
+    else { wg.addColorStop(0, L.liquid[0]); wg.addColorStop(1, L.liquid[1]); }
+    c.fillStyle = wg; c.fillRect(-50, lvl, 100, 60);
+    c.fillStyle = frozen ? 'rgba(255,255,255,.95)' : 'rgba(235,245,255,.85)'; c.fillRect(-50, lvl - 0.5, 100, 1.6);
+    if (L.logo === 'bubbles' && !frozen) { c.fillStyle = 'rgba(255,255,255,.55)'; for (let i = 0; i < 6; i++) circ(c, Math.sin(i * 2.3 + NOW * 2) * 6, lvl + 6 + ((i * 7 + NOW * 14) % 24), 0.9); }
+    if (frozen) { c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 0.5; c.beginPath(); c.moveTo(-6, lvl + 3); c.lineTo(2, lvl + 9); c.lineTo(-1, lvl + 14); c.stroke(); }
+    c.restore();
+  }
+  const eg = c.createLinearGradient(-hw, 0, hw, 0);
+  eg.addColorStop(0, 'rgba(10,30,60,.3)'); eg.addColorStop(0.25, 'rgba(0,0,0,0)'); eg.addColorStop(0.75, 'rgba(0,0,0,0)'); eg.addColorStop(1, 'rgba(10,30,60,.34)');
+  c.fillStyle = eg; c.fillRect(-hw, top, bw, bh);
+  const ridges = L.opaque ? [bot - 8, bot - 12, bot - 16, bot - 20] : [bot - 9, bot - 14, -13.5];
+  for (const ry of ridges) {
+    c.strokeStyle = 'rgba(30,50,80,.35)'; c.lineWidth = 0.8; c.beginPath(); c.ellipse(0, ry, hw - 0.5, 1.6, 0, 0, Math.PI); c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,.4)'; c.beginPath(); c.ellipse(0, ry - 1, hw - 0.5, 1.6, 0, 0, Math.PI); c.stroke();
+  }
+  // yorliq
+  const lt = -7, lh = 15;
+  c.fillStyle = grad4(c, -hw, hw, L.label); c.fillRect(-hw, lt, bw, lh);
+  c.fillStyle = 'rgba(255,255,255,.92)';
+  if (L.logo === 'bubbles') { for (const [bx, by, br] of [[-4, 8, 2.6], [2, 5, 2], [5, 10, 1.6], [-1, 11.5, 1.2]]) { c.beginPath(); c.arc(bx, lt + by, br, 0, Math.PI * 2); c.fill(); } }
+  else if (L.logo === 'bolt') { c.beginPath(); c.moveTo(1.5, lt + 2); c.lineTo(-4, lt + 8.5); c.lineTo(-0.5, lt + 8.5); c.lineTo(-2, lt + 13); c.lineTo(4, lt + 6); c.lineTo(0.5, lt + 6); c.closePath(); c.fill(); }
+  else {
+    c.beginPath(); c.moveTo(-7.5, lt + 11.5); c.lineTo(-2.5, lt + 4); c.lineTo(0, lt + 7); c.lineTo(2.8, lt + 3.2); c.lineTo(8, lt + 11.5); c.closePath(); c.fill();
+    c.fillStyle = L.label[2]; c.beginPath(); c.moveTo(-4.2, lt + 6.6); c.lineTo(-2.5, lt + 4); c.lineTo(-1.2, lt + 5.8); c.closePath(); c.fill();
+  }
+  c.fillStyle = 'rgba(255,255,255,.7)'; c.fillRect(-hw, lt + 1, bw, 0.7); c.fillRect(-hw, lt + lh - 1.7, bw, 0.7);
+  c.fillStyle = eg; c.fillRect(-hw, lt, bw, lh);
+  const hg = c.createLinearGradient(0, top + nk, 0, bot);
+  hg.addColorStop(0, 'rgba(255,255,255,0)'); hg.addColorStop(0.2, 'rgba(255,255,255,.75)'); hg.addColorStop(0.8, 'rgba(255,255,255,.55)'); hg.addColorStop(1, 'rgba(255,255,255,0)');
+  c.fillStyle = hg; c.fillRect(-hw + 3.2, top + nk + 2, 2.6, bh - nk - 6);
+  c.fillStyle = 'rgba(255,255,255,.25)'; c.fillRect(hw - 5, top + nk + 6, 1.4, bh - nk - 16);
+  if (frost > 0) {
+    c.fillStyle = `rgba(225,240,255,${0.65 * frost})`; c.fillRect(-hw, top, bw, bh);
+    c.strokeStyle = `rgba(255,255,255,${0.9 * frost})`; c.lineWidth = 0.6;
+    for (let i = 0; i < 5; i++) { const fx = -hw + 3 + i * (bw - 6) / 4, fy = top + nk + 6 + (i % 2) * 14; c.beginPath(); c.moveTo(fx - 3, fy); c.lineTo(fx + 3, fy); c.moveTo(fx, fy - 3); c.lineTo(fx, fy + 3); c.moveTo(fx - 2, fy - 2); c.lineTo(fx + 2, fy + 2); c.moveTo(fx + 2, fy - 2); c.lineTo(fx - 2, fy + 2); c.stroke(); }
+  }
+  c.restore();
+  c.lineWidth = 1.1; c.strokeStyle = 'rgba(25,40,60,.6)'; bottlePath(c, L); c.stroke();
+  c.fillStyle = 'rgba(205,228,246,.85)'; c.fillRect(-cw / 2 - 1.5, top + 9, cw + 3, 2);
+  // qopqoq (sport baklashkada ichish uchun burun bor)
+  if (L.logo === 'bolt') { c.fillStyle = '#e6e6ea'; rr(c, -2.5, top - 4, 5, 5, 1.5); c.fill(); }
+  rr(c, -cw / 2 - 1, top, cw + 2, 9, 1.8); c.fillStyle = grad4(c, -cw / 2, cw / 2, L.cap); c.fill();
+  c.strokeStyle = 'rgba(0,10,30,.45)'; c.lineWidth = 0.6;
+  for (let i = -cw / 2 + 1; i <= cw / 2 - 0.9; i += 1.6) { c.beginPath(); c.moveTo(i, top + 1); c.lineTo(i, top + 8); c.stroke(); }
+  c.fillStyle = 'rgba(255,255,255,.35)'; c.fillRect(-cw / 2 + 1, top + 1, 2, 7);
+  c.restore();
+}
+
+function drawAim(c) {
+  const v = launchVec(aim), pp = pullPoint();
+  c.save();
+  c.setLineDash([4, 5]); c.strokeStyle = 'rgba(255,255,255,.75)'; c.lineWidth = 2;
+  c.beginPath(); c.moveTo(b.x, b.y); c.lineTo(pp.x, pp.y); c.stroke(); c.setLineDash([]);
+  c.shadowColor = 'rgba(0,0,0,.4)'; c.shadowBlur = 4;
+  c.fillStyle = 'rgba(255,255,255,.95)'; circ(c, pp.x, pp.y, 5);
+  if (v) {
+    c.lineWidth = 4; c.lineCap = 'round';
+    c.strokeStyle = 'rgba(0,0,0,.25)'; c.beginPath(); c.arc(b.x, b.y, 48, 0, Math.PI * 2); c.stroke();
+    c.strokeStyle = `hsl(${120 - v.power * 120},80%,55%)`;
+    c.beginPath(); c.arc(b.x, b.y, 48, -Math.PI / 2, -Math.PI / 2 + v.power * Math.PI * 2); c.stroke();
+    for (let i = 1; i <= 9; i++) {
+      const t = i * 0.04;
+      c.fillStyle = `rgba(255,255,255,${0.95 - i * 0.08})`;
+      circ(c, b.x + v.vx * t, b.y + v.vy * t + 0.5 * GRAV * t * t, 4.2 - i * 0.25);
+    }
+  }
+  c.restore();
+}
+
+function drawParticles(c) {
+  for (const q of particles) {
+    const a = 1 - q.life / q.max;
+    if (q.kind === 'dust') { c.fillStyle = rgb(q.col, 0.45 * a); circ(c, q.x, q.y, q.size * (1 + q.life * 2.5)); }
+    else if (q.kind === 'snow') { c.fillStyle = `rgba(255,255,255,${0.9 * a})`; circ(c, q.x, q.y, q.size * (1 + q.life)); }
+    else if (q.kind === 'ice') {
+      c.save(); c.translate(q.x, q.y); c.rotate(q.life * 9 + q.size);
+      c.fillStyle = `rgba(225,247,255,${a})`; c.fillRect(-q.size, -q.size * 0.4, q.size * 2, q.size * 0.8); c.restore();
+    }
+    else if (q.kind === 'drop') { c.fillStyle = `rgba(160,205,240,${0.85 * a})`; circ(c, q.x, q.y, q.size * 0.6); }
+    else if (q.kind === 'gold') { c.fillStyle = `rgba(255,214,110,${a})`; sparkle(c, q.x, q.y, q.size * 1.6); }
+    else if (q.kind === 'fire') { c.fillStyle = `rgba(255,${(140 + 110 * a) | 0},60,${a})`; circ(c, q.x, q.y, q.size * (0.5 + a * 0.7)); }
+    else { c.fillStyle = `rgba(255,255,255,${a})`; sparkle(c, q.x, q.y, q.size * 1.2); }
+  }
+}
+
+// ================= HUD =================
+function txt(str, x, y, size, color, align = 'left', weight = 800) {
+  ctx.font = `${weight} ${size}px Rubik, system-ui, sans-serif`;
+  ctx.textAlign = align; ctx.textBaseline = 'alphabetic';
+  ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 1.5;
+  ctx.fillStyle = color; ctx.fillText(str, x, y); ctx.restore();
+}
+const fmtT = t => `${t > 0 ? '+' : t < 0 ? '−' : ''}${Math.abs(t)}°C`;
+
+function drawThermo(temp, zoneName) {
+  const x = W - 22, y0 = 96, y1 = 172;
+  ctx.save();
+  rr(ctx, x - 4, y0, 8, y1 - y0, 4);
+  ctx.fillStyle = 'rgba(255,255,255,.22)'; ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 1.2; ctx.stroke();
+  const f = clamp((temp + 35) / 70, 0, 1);
+  const col = temp > 15 ? '#e8453c' : temp > 0 ? '#f08a3c' : temp > -12 ? '#5aaee8' : '#3d7fe0';
+  const hgt = (y1 - y0 - 4) * f;
+  ctx.fillStyle = col; ctx.fillRect(x - 2, y1 - hgt, 4, hgt + 2);
+  ctx.beginPath(); ctx.arc(x, y1 + 6, 7, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,.55)';
+  ctx.beginPath(); ctx.arc(x - 2.2, y1 + 3.8, 1.8, 0, Math.PI * 2); ctx.fill();
+  for (const tt of [-30, -15, 0, 15, 30]) {
+    const ty = y1 - (y1 - y0 - 4) * ((tt + 35) / 70);
+    ctx.fillStyle = tt === 0 ? 'rgba(255,255,255,.95)' : 'rgba(255,255,255,.6)';
+    ctx.fillRect(x - 9, ty, tt === 0 ? 5 : 3, 1);
+  }
+  ctx.restore();
+  txt(fmtT(temp), x - 14, y0 + 44, 18, '#ffffff', 'right');
+  txt(zoneName, x - 14, y0 + 62, 12, 'rgba(255,255,255,.88)', 'right', 700);
+}
+
+const WORD_STYLE = {
+  plain: [['#ffffff', '#f6efe2', '#d9cbb0'], 'rgba(60,45,25,.3)'],
+  gold:  [['#fff5d2', '#f4cb6c', '#c98a2a'], 'rgba(90,55,10,.45)'],
+  sad:   [['#eef3fa', '#bfcde0', '#8ea3c0'], 'rgba(30,45,70,.35)'],
+  scold: [['#ffe0d6', '#ff8a6a', '#d0432a'], 'rgba(90,20,10,.45)']
+};
+function drawPraise() {
+  if (!praise) return;
+  const t = praise.t, life = 2.1;
+  if (t > life) { praise = null; return; }
+  const a = t < 0.12 ? t / 0.12 : t > life - 0.45 ? Math.max(0, (life - t) / 0.45) : 1;
+  const k = Math.min(1, t / 0.28), back = 1 + 2.2 * Math.pow(k - 1, 3) + 1.2 * Math.pow(k - 1, 2);
+  const sc = 0.65 + 0.35 * back;
+  const [cols, edge] = WORD_STYLE[praise.kind];
+  // dakki titrab chiqadi, afsus sekin pastga cho'kadi
+  const jx = praise.kind === 'scold' && t < 0.45 ? Math.sin(t * 55) * 4 * (1 - t / 0.45) : 0;
+  ctx.save();
+  ctx.globalAlpha = a;
+  ctx.translate(W / 2 + jx, H * 0.3 + (praise.kind === 'sad' ? t * 6 : -t * 8));
+  ctx.scale(sc, sc);
+  ctx.font = '700 40px "El Messiri", Georgia, serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  const mw = ctx.measureText(praise.w).width, fit = Math.min(1, (W - 36) / mw);
+  ctx.scale(fit, fit);
+  const gg = ctx.createLinearGradient(0, -34, 0, 6);
+  gg.addColorStop(0, cols[0]); gg.addColorStop(0.55, cols[1]); gg.addColorStop(1, cols[2]);
+  ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 12; ctx.shadowOffsetY = 2;
+  ctx.fillStyle = gg; ctx.fillText(praise.w, 0, 0);
+  ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+  ctx.lineWidth = 0.8; ctx.strokeStyle = edge; ctx.strokeText(praise.w, 0, 0);
+  ctx.restore();
+}
+
+function drawBanner() {
+  if (!banner || banner.t < 0) return;
+  const t = banner.t, life = 2.6;
+  if (t > life) { banner = null; return; }
+  const a = t < 0.3 ? t / 0.3 : t > life - 0.6 ? Math.max(0, (life - t) / 0.6) : 1;
+  ctx.save(); ctx.globalAlpha = a;
+  ctx.font = '700 36px "El Messiri", Georgia, serif'; ctx.textAlign = 'center';
+  ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 10;
+  ctx.fillStyle = '#ffffff'; ctx.fillText(banner.title, W / 2, H * 0.17);
+  ctx.font = '700 13px Rubik, system-ui, sans-serif'; ctx.fillStyle = 'rgba(255,255,255,.92)';
+  ctx.fillText(banner.sub, W / 2, H * 0.17 + 22);
+  ctx.restore();
+}
+
+function drawHUD(env, temp, zi) {
+  const cur = Math.max(0, Math.round(-lastStand.p.y / PX_PER_M));
+  txt(`${cur} m`, 16, 46, 34, '#ffffff');
+  txt(tr('record', best), 18, 70, 13, '#ffe1a6', 'left', 700);
+  txt(tr('nextCp', (checkpoint.cp + 1) * CHECK_EVERY), 18, 90, 12, 'rgba(235,245,255,.92)', 'left', 700);
+  for (let i = 0; i < LIVES; i++) {
+    ctx.globalAlpha = i < lives ? 1 : 0.28;
+    drawBottle(ctx, W - 22 - i * 24, 30, 0, 22 / BH, false);
+    ctx.globalAlpha = 1;
+  }
+  txt(`⭐ ${stars}`, W - 14, 74, 15, '#ffe1a6', 'right');
+  drawCoin(ctx, 26, 108, 1, false);
+  txt(`${coins}`, 40, 114, 16, '#ffd76a');
+  drawThermo(temp, zoneName(zi));
+  if (Math.abs(windNow) > 6) {
+    const wx = W - 40, wy = 206, d = Math.sign(windNow), len = clamp(Math.abs(windNow) / 66, 0.2, 1) * 28;
+    ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+    ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 4;
+    const tip = wx + d * len / 2;
+    ctx.beginPath(); ctx.moveTo(wx - d * len / 2, wy); ctx.lineTo(tip, wy);
+    ctx.moveTo(tip - d * 6, wy - 5); ctx.lineTo(tip, wy); ctx.lineTo(tip - d * 6, wy + 5); ctx.stroke();
+    ctx.restore();
+    txt(tr('wind'), W - 14, wy + 18, 11, 'rgba(255,255,255,.85)', 'right', 700);
+  }
+  if (freezeT > 0) {
+    const lim = freezeLimit(tempAt(Math.max(0, -b.y / PX_PER_M)));
+    if (freezeT > lim * 0.3) txt(`❄ ${Math.ceil(lim - freezeT)}`, b.x + VX, b.y - VY - BH / 2 - 16, 17, '#cfeaff', 'center');
+  }
+  for (const p of platforms) if (p.cp && visible(p)) txt(`${p.cp * CHECK_EVERY} m`, p.x + VX + p.w / 2 - 14, p.y - VY + 14, 11, '#ffffff', 'center', 800);
+  for (const pu of popups) {
+    const a = clamp(2.2 - pu.t * 1.6, 0, 1); if (a <= 0) continue;
+    ctx.globalAlpha = a;
+    txt(pu.text, clamp(pu.x + VX, 90, W - 90), pu.y - VY, pu.size, pu.color, 'center');
+    ctx.globalAlpha = 1;
+  }
+  drawBanner();
+  drawPraise();
+  if (lastStand.p.type === 'ground' && !over) {
+    if (hint && b.state === 'stand' && !aim) {
+      ctx.globalAlpha = 0.7 + 0.3 * Math.sin(NOW * 4);
+      txt(tr('hint'), W / 2, H - 104, 18, '#ffffff', 'center');
+      ctx.globalAlpha = 1;
+    }
+    txt(tr('training'), W / 2, H - 76, 12, 'rgba(255,255,255,.85)', 'center', 700);
+  }
+  if (over) {
+    ctx.fillStyle = 'rgba(8,10,20,.62)'; ctx.fillRect(0, 0, W, H);
+    ctx.save();
+    ctx.font = '700 40px "El Messiri", Georgia, serif'; ctx.textAlign = 'center';
+    ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 10; ctx.fillStyle = '#ff8a7a';
+    ctx.fillText(tr('overTitle'), W / 2, H * 0.4);
+    ctx.restore();
+    txt(tr('overCp', checkpoint.cp * CHECK_EVERY), W / 2, H * 0.4 + 36, 15, '#ffffff', 'center', 700);
+    txt(tr('overTap'), W / 2, H * 0.4 + 72, 16, '#ffe1a6', 'center');
+    if (coins >= PRICE_LIFE) txt(tr('overLife'), W / 2, H * 0.4 + 104, 13, 'rgba(255,255,255,.85)', 'center', 700);
+  }
+}
+
+// Tanga: kumush tanga (1) yoki oltin tilla (3); spin=true bo'lsa aylanib turadi
+function drawCoin(c, x, y, v, spin) {
+  const gold = v > 1, r = gold ? 10 : 8.5, sx = spin ? Math.cos(NOW * 3 + x * 0.05) : 1;
+  c.save();
+  const gl = c.createRadialGradient(x, y, 0, x, y, r * 2.4);
+  gl.addColorStop(0, gold ? 'rgba(255,215,90,.35)' : 'rgba(255,255,255,.28)'); gl.addColorStop(1, 'rgba(255,255,255,0)');
+  c.fillStyle = gl; c.fillRect(x - r * 2.4, y - r * 2.4, r * 4.8, r * 4.8);
+  c.translate(x, y); c.scale(Math.max(0.12, Math.abs(sx)), 1);
+  const g = c.createRadialGradient(-r * 0.35, -r * 0.35, r * 0.1, 0, 0, r);
+  if (gold) { g.addColorStop(0, '#fff6c8'); g.addColorStop(0.55, '#f2c24a'); g.addColorStop(1, '#a9741a'); }
+  else { g.addColorStop(0, '#ffffff'); g.addColorStop(0.55, '#d3d9e0'); g.addColorStop(1, '#7f8893'); }
+  c.fillStyle = g; circ(c, 0, 0, r);
+  c.lineWidth = 1.2; c.strokeStyle = gold ? '#8a5a12' : '#5f6873'; c.stroke();
+  c.lineWidth = 0.8; c.strokeStyle = gold ? 'rgba(255,240,190,.8)' : 'rgba(255,255,255,.75)';
+  c.beginPath(); c.arc(0, 0, r * 0.72, 0, Math.PI * 2); c.stroke();
+  c.fillStyle = gold ? '#9a6614' : '#6a737e';
+  if (gold) sparkle(c, 0, 0, r * 0.45); else { circ(c, 0, -2.2, 1); circ(c, -2, 1.6, 1); circ(c, 2, 1.6, 1); }
+  c.restore();
+}
+
+// ================= Kadrni chizish =================
+function render() {
+  VX = (Math.random() - 0.5) * shake;
+  VY = camY + (Math.random() - 0.5) * shake;
+  const viewH = Math.max(0, -(VY + H * 0.72) / PX_PER_M);
+  const env = envAt(viewH), temp = tempAt(viewH), zi = zoneAt(viewH);
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  ctx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+  drawBackground(ctx, env, zi);
+  ctx.save(); ctx.translate(VX, -VY);
+  for (const p of platforms) {
+    if (visible(p)) drawPlatform(ctx, p);
+    else if (p.tex && p.y - VY > H + 600) p.tex = null;
+  }
+  for (const p of platforms) if (p.coin && !p.coin.taken && visible(p)) drawCoin(ctx, p.coin.x, p.coin.y + Math.sin(NOW * 2.2 + p.coin.x) * 3, p.coin.v, true);
+  if (b.state === 'stand' || b.state === 'pivot') {
+    const sg = ctx.createRadialGradient(b.pivotX, b.pivotY, 0, b.pivotX, b.pivotY, 18);
+    sg.addColorStop(0, 'rgba(0,0,0,.35)'); sg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.save(); ctx.translate(b.pivotX, b.pivotY); ctx.scale(1, 0.25); ctx.translate(-b.pivotX, -b.pivotY);
+    ctx.fillStyle = sg; circ(ctx, b.pivotX, b.pivotY, 18); ctx.restore();
+  }
+  drawParticles(ctx);
+  const bh = Math.max(0, -b.y / PX_PER_M);
+  if (b.state !== 'over') drawBottle(ctx, b.x, b.y, b.angle, 1, tempAt(bh) < -6, BOTTLES[bottleKey], freezeT ? Math.min(1, freezeT / freezeLimit(tempAt(bh))) : 0);
+  if (aim) drawAim(ctx);
+  ctx.restore();
+  // qor
+  for (let i = 0; i < snowN; i++) {
+    const f = flakes[i];
+    ctx.fillStyle = `rgba(255,255,255,${0.45 + f.d * 0.5})`;
+    circ(ctx, f.x, f.y, f.r * (0.6 + f.d * 0.6));
+  }
+  if (snowN === 0) for (let i = 0; i < petalN; i++) {
+    const f = flakes[i];
+    ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(NOW * 1.5 + f.ph);
+    ctx.fillStyle = `rgba(248,190,210,${0.6 + f.d * 0.35})`;
+    ctx.beginPath(); ctx.ellipse(0, 0, 2.6 * (0.6 + f.d), 1.4 * (0.6 + f.d), 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+  if (temp < -8) {
+    const hz = Math.min(1, (-8 - temp) / 20);
+    const hg = ctx.createLinearGradient(0, H * 0.55, 0, H);
+    hg.addColorStop(0, 'rgba(230,240,250,0)'); hg.addColorStop(1, `rgba(230,240,250,${0.35 * hz})`);
+    ctx.fillStyle = hg; ctx.fillRect(0, H * 0.55, W, H * 0.45);
+  }
+  drawHUD(env, temp, zi);
+  return temp;
+}
+
+// ================= Ekran o'lchami va boshqaruv =================
+function resize() {
+  const vh = Math.max(240, document.body.clientHeight || window.innerHeight || 0);
+  const vw = Math.max(160, document.body.clientWidth || window.innerWidth || 0);
+  const cssW = Math.min(vw, Math.round(vh * 0.62));
+  scale = cssW / W; H = vh / scale;
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.style.width = cssW + 'px'; canvas.style.height = vh + 'px';
+  canvas.width = Math.round(cssW * dpr); canvas.height = Math.round(vh * dpr);
+  wrapEl.style.width = cssW + 'px';
+  texScale = clamp(Math.round(scale * dpr * 2) / 2, 1, 3);
+}
+window.addEventListener('resize', resize);
+if (TG) try { TG.onEvent('viewportChanged', resize); } catch (e) {}
+
+function toLogical(e) { const r = canvas.getBoundingClientRect(); return [(e.clientX - r.left) / scale, (e.clientY - r.top) / scale]; }
+canvas.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  Snd.init();
+  if (over) { continueFromCheckpoint(); return; }
+  if ((b.state !== 'stand' && b.state !== 'pivot') || aim) return;  // qo'nishi bilan tortishni boshlash mumkin
+  const [x, y] = toLogical(e);
+  aim = { sx: x, sy: y, cx: x, cy: y, id: e.pointerId };
+  try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+  Snd.grab();
+});
+canvas.addEventListener('pointermove', e => {
+  if (!aim || e.pointerId !== aim.id) return;
+  const [x, y] = toLogical(e); aim.cx = x; aim.cy = y;
+});
+canvas.addEventListener('pointerup', e => {
+  if (!aim || e.pointerId !== aim.id) return;
+  const [x, y] = toLogical(e); aim.cx = x; aim.cy = y;
+  const v = launchVec(aim); aim = null;
+  if (!v) return;
+  // hali chayqalayotgan bo'lsa: yiqilmayotgan bo'lsagina qo'nish hisoblanadi va darhol sakraydi
+  if (b.state === 'pivot') { if (!steadyEnough()) return; settle(); }
+  if (launch(v.vx, v.vy)) Snd.launch(v.power);
+});
+canvas.addEventListener('pointercancel', () => { aim = null; });
+window.addEventListener('keydown', e => { Snd.init(); if (!menuOpen && (e.key === 'r' || e.key === 'R')) newGame(); });
+
+// Ovoz tugmasi
+const sndBtn = document.getElementById('snd');
+const SPEAKER = '<path fill="currentColor" d="M4 9h4l5-4v14l-5-4H4z"/>';
+const ICON_ON = `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">${SPEAKER}<path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>`;
+const ICON_OFF = `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">${SPEAKER}<path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M16 9.5l5 5M21 9.5l-5 5"/></svg>`;
+function paintSnd() {
+  const m = Snd.isMuted();
+  sndBtn.innerHTML = m ? ICON_OFF : ICON_ON;
+  sndBtn.setAttribute('aria-label', tr(m ? 'sndOn' : 'sndOff'));
+  sndBtn.setAttribute('aria-pressed', String(m));
+}
+sndBtn.addEventListener('click', () => { Snd.init(); Snd.toggle(); paintSnd(); });
+
+// Do'kon va menyu tugmalari
+const boostBtn = document.getElementById('buy-boost'), lifeBtn = document.getElementById('buy-life');
+const boostPriceEl = document.getElementById('boost-price'), menuBtn = document.getElementById('btn-menu');
+let shopKey = '';
+function updateShop() {
+  const price = boostPrice();
+  const canBoost = !menuOpen && coins >= price && b.state === 'stand' && !over && !aim;
+  const canLife = !menuOpen && coins >= PRICE_LIFE && (over || lives < LIVES);
+  const canMenu = !menuOpen && !aim && (b.state === 'stand' || over);
+  const key = [canBoost, canLife, canMenu, price].join();
+  if (key === shopKey) return;
+  shopKey = key;
+  boostBtn.disabled = !canBoost; lifeBtn.disabled = !canLife; menuBtn.disabled = !canMenu;
+  boostPriceEl.textContent = price;
+  boostBtn.setAttribute('aria-label', tr('boostAria', price));
+}
+
+// ================= Menyu: baklashka va mavzu tanlash =================
+const menuEl = document.getElementById('menu'), playBtn = document.getElementById('btn-play'), resumeBtn = document.getElementById('btn-resume');
+function drawThemeThumb(cv, key) {
+  const c = cv.getContext('2d'), k = cv.width / 120, th = THEMES[key], e = ENV[0];
+  c.setTransform(k, 0, 0, k, 0, 0);
+  const g = c.createLinearGradient(0, 0, 0, 80); g.addColorStop(0, rgb(e.top)); g.addColorStop(1, rgb(e.bot));
+  c.fillStyle = g; c.fillRect(0, 0, 120, 80);
+  const far = th.tint ? e.far.map((v, i) => (v + th.tint[i]) / 2) : e.far;
+  c.fillStyle = rgb(far); c.beginPath(); c.moveTo(0, 80);
+  for (let x = 0; x <= 120; x += 2) c.lineTo(x, 60 - farH(x * W / 120, 1.7, th.far) * 40);
+  c.lineTo(120, 80); c.fill();
+  c.fillStyle = '#5c9a48'; c.fillRect(0, 66, 120, 14);
+  if (key === 'uz') drawMadrasa(c, 60, 67, 0.55);
+  else if (key === 'cn') drawPagoda(c, 60, 67, 0.62);
+  else if (key === 'jp') { drawTorii(c, 50, 67, 0.6); drawSakura(c, 92, 67, 22, 0); }
+  else if (key === 'misr') { drawPyramids(c, 50, 67, 0.6); drawPalm(c, 100, 67, 26); }
+  else if (key === 'hind') { drawTemple(c, 58, 67, 0.62); drawPalm(c, 98, 67, 26); }
+  else { drawCactus(c, 44, 67, 24); drawCactus(c, 82, 67, 17); }
+}
+function buildMenu() {
+  const bWrap = document.getElementById('pick-bottle'), tWrap = document.getElementById('pick-theme');
+  const card = (k, label, note, cv, onPick) => {
+    const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'pick'; btn.dataset.k = k; btn.dataset.name = label;
+    const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = label;
+    btn.append(cv, nm);
+    if (note) { const nt = document.createElement('span'); nt.className = 'nt'; nt.textContent = note; btn.append(nt); }
+    const lock = document.createElement('span'); lock.className = 'lock'; btn.append(lock);
+    btn.addEventListener('click', () => { Snd.init(); tryPick(k, onPick); });
+    return btn;
+  };
+  for (const k of Object.keys(BOTTLES)) {
+    const cv = makeCanvas(96, 128), c = cv.getContext('2d');
+    c.scale(2, 2); drawBottle(c, 24, 33, 0, 0.78, false, BOTTLES[k]);
+    bWrap.append(card(k, BOTTLES[k].name, BOTTLES[k].note, cv, pickBottle));
+  }
+  for (const k of Object.keys(THEMES)) {
+    const cv = makeCanvas(240, 160); drawThemeThumb(cv, k);
+    tWrap.append(card(k, THEMES[k].name, '', cv, pickTheme));
+  }
+}
+function paintMenu() {
+  for (const el of document.querySelectorAll('#menu .pick')) {
+    const k = el.dataset.k, price = priceOf(k), locked = !isOwned(k), nm = itemName(k);
+    el.setAttribute('aria-pressed', String(k === bottleKey || k === themeKey));
+    el.classList.toggle('locked', locked);
+    el.querySelector('.nm').textContent = nm;
+    const nt = el.querySelector('.nt'); if (nt) nt.textContent = itemNote(k);
+    el.querySelector('.lock').textContent = !locked ? '' : pendingBuy !== k ? tr('price', price)
+      : coins >= price ? tr('tapBuy') : tr('needMore', price - coins);
+    el.setAttribute('aria-label', locked ? tr('priceAria', nm, price) : nm);
+  }
+  document.getElementById('menu-coins').textContent = tr('coinsHave', coins);
+  resumeBtn.hidden = !(maxH > 0 || lastStand.p.type !== 'ground' || over);
+}
+// Qulflangan narsa: 1-bosish narxini so'raydi, 3 soniya ichida 2-bosish sotib oladi
+let pendingBuy = null, pendingTimer = 0;
+function tryPick(k, pick) {
+  if (isOwned(k)) { pendingBuy = null; pick(k); return; }
+  const price = priceOf(k);
+  if (pendingBuy === k && coins >= price) {
+    pendingBuy = null; clearTimeout(pendingTimer);
+    spend(price); owned.add(k); store('bflip_owned', JSON.stringify([...owned]));
+    Snd.buy(); haptic('success');
+    pick(k);
+    return;
+  }
+  pendingBuy = k; paintMenu();
+  clearTimeout(pendingTimer);
+  pendingTimer = setTimeout(() => { pendingBuy = null; paintMenu(); }, 3000);
+}
+function pickBottle(k) {
+  applyBottle(k);
+  if (b.state === 'stand') placeStanding(b.plat, b.pivotX, 'bottom');
+  paintMenu();
+}
+function pickTheme(k) { themeKey = k; store('bflip_theme', k); paintMenu(); }
+function openMenu() { menuOpen = true; aim = null; menuEl.hidden = false; paintMenu(); playBtn.focus(); }
+function closeMenu() { menuOpen = false; menuEl.hidden = true; }
+playBtn.addEventListener('click', () => { Snd.init(); closeMenu(); newGame(); });
+resumeBtn.addEventListener('click', () => { Snd.init(); closeMenu(); });
+menuBtn.addEventListener('click', () => { Snd.init(); openMenu(); });
+window.addEventListener('keydown', e => { if (e.key === 'Escape' && menuOpen && !resumeBtn.hidden) closeMenu(); });
+
+// ================= Reyting (do'stlar bilan umumiy) =================
+// scores/<foydalanuvchi id> = { best, theme, bottle, at }. Har kim faqat o'zinikini yozadi, hamma o'qiydi.
+const LB = { db: null, user: null, myId: null, myBest: 0, writing: false, pending: false, readonly: false, rows: [], loaded: false };
+const lbList = document.getElementById('lb-list'), lbNoteEl = document.getElementById('lb-note');
+// Izoh kalit bilan saqlanadi: til almashsa qayta tarjima qilinadi
+let lbKey = 'lbLoading';
+const lbNote = (key, raw) => { lbKey = key; lbNoteEl.textContent = raw ?? (key ? tr(key) : ''); lbNoteEl.hidden = !lbNoteEl.textContent; };
+const shareBtn = document.getElementById('btn-share');
+shareBtn.addEventListener('click', async () => {
+  const url = SHARE_URL || location.href.split('#')[0];
+  const text = tr('shareText', best);
+  if (TG) { TG.openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(url) + '&text=' + encodeURIComponent(text)); return; }
+  if (navigator.share) { try { await navigator.share({ title: 'Baklashka Flip', text, url }); } catch (e) {} return; }
+  try { await navigator.clipboard.writeText(text + ' ' + url); lbNote('copied'); }
+  catch (e) { lbNote(null, text + ' ' + url); }
+});
+async function renderLB() {
+  const ids = LB.rows.map(r => r.id);
+  const ps = LB.user && ids.length ? await LB.user.profiles(ids) : {};
+  lbList.replaceChildren(...LB.rows.map(r => {
+    const li = document.createElement('li');
+    if (r.id === LB.myId) li.className = 'me';
+    const p = ps[r.id];
+    if (p) { const img = document.createElement('img'); img.src = p.avatarUrl; img.alt = ''; li.append(img); }
+    const nm = document.createElement('span'); nm.className = 'nm';
+    nm.textContent = (p && p.name) || tr(r.id === LB.myId ? 'you' : 'player');
+    const sc = document.createElement('b'); sc.textContent = r.best + ' m';
+    li.append(nm, sc);
+    return li;
+  }));
+  if (!LB.loaded) return;
+  if (LB.readonly) lbNote('lbReadonly');
+  else if (!LB.rows.length) lbNote('lbEmpty');
+  else lbNote(null);
+}
+async function initLB() {
+  try {
+    if (!window.claude || !window.claude.use) {
+      // Telegram yoki oddiy sayt: umumiy reyting yo'q, natijani do'stlarga yuborish mumkin
+      lbNote('lbShare');
+      shareBtn.hidden = false;
+      return;
+    }
+    const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
+    LB.user = user;
+    if (!db) { lbNote('lbSignin'); return; }
+    LB.db = db;
+    LB.myId = user ? await user.id() : null;
+    if (!LB.myId || (user && (await user.can('data.write')) === false)) LB.readonly = true;
+    if (LB.myId) { const s = await db.doc('scores/' + LB.myId).get(); if (s.exists) LB.myBest = +s.data().best || 0; }
+    const timer = setTimeout(() => { if (!LB.loaded) lbNote('lbSlow'); }, 10000);
+    db.collection('scores').orderBy('best', 'desc').limit(10).onSnapshot(snap => {
+      if (!snap.metadata.fromCache) { LB.loaded = true; clearTimeout(timer); }
+      LB.rows = snap.docs.map(d => ({ id: d.id, best: +d.data().best || 0 }));
+      renderLB();
+    }, () => { clearTimeout(timer); lbNote('lbLost'); });
+  } catch (e) { lbNote('lbFail'); }
+}
+async function flushScore() {
+  if (LB.writing) { LB.pending = true; return; }
+  LB.writing = true;
+  try {
+    await LB.db.doc('scores/' + LB.myId).set({ best: LB.myBest, theme: themeKey, bottle: bottleKey, at: Date.now() });
+  } catch (e) {
+    if (e && (e.code === 'invalid_argument' || e.code === 'not_granted' || e.code === 'revoked')) { LB.readonly = true; renderLB(); }
+  }
+  LB.writing = false;
+  if (LB.pending) { LB.pending = false; flushScore(); }
+}
+// Yangi shaxsiy rekord bo'lsagina yoziladi
+function submitScore(h) {
+  if (!LB.db || !LB.myId || LB.readonly || h <= LB.myBest) return;
+  LB.myBest = h;
+  flushScore();
+}
+boostBtn.addEventListener('click', () => { Snd.init(); startBoost(); });
+lifeBtn.addEventListener('click', () => { Snd.init(); buyLife(); });
+paintSnd();
+document.addEventListener('visibilitychange', () => { if (document.hidden) Snd.suspend(); else Snd.resume(); });
+
+try { ['700 40px "El Messiri"', '800 20px Rubik', '700 20px Rubik'].forEach(f => document.fonts.load(f).catch(() => {})); } catch (_) {}
+
+// ================= Asosiy sikl =================
+let lastT = performance.now(), lastTemp = 30;
+function frame(now) {
+  const dt = Math.min(0.05, Math.max(0, (now - lastT) / 1000));
+  lastT = now; NOW = now / 1000;
+  windNow = menuOpen ? 0 : windAt(Math.max(0, -(camY + H * 0.72) / PX_PER_M));
+  if (!menuOpen) {  // menyu ochiq bo'lsa o'yin pauzada
+    const SUB = 8, sdt = dt / SUB;
+    for (let i = 0; i < SUB; i++) {
+      if (b.state === 'fly') stepFly(sdt);
+      else if (b.state === 'pivot') stepPivot(sdt);
+      else if (b.state === 'stand') stepStand(sdt);
+      else if (b.state === 'fallen') stepFallen(sdt);
+      else if (b.state === 'boost') stepBoost(sdt);
+    }
+    if (!over && b.state !== 'boost') collectCoins();  // raketa yo'lidagi tangalar olinmaydi, aks holda o'z narxini qaytaradi
+    updateFreeze(dt);
+  }
+  updateShop();
+  updateCamera(dt);
+  updateSnow(dt, lastTemp);
+  Snd.update(dt, Math.max(0, -(camY + H * 0.72) / PX_PER_M));
+  for (const q of particles) { q.life += dt; q.x += q.vx * dt; q.y += q.vy * dt; q.vy += 300 * dt; q.vx *= Math.exp(-2 * dt); }
+  particles = particles.filter(q => q.life < q.max);
+  for (const pu of popups) { pu.t += dt; pu.y -= 34 * dt; }
+  popups = popups.filter(pu => pu.t < 1.4);
+  if (praise) praise.t += dt;
+  if (banner) banner.t += dt;
+  shake *= Math.exp(-12 * dt); if (shake < 0.1) shake = 0;
+  lastTemp = render();
+  requestAnimationFrame(frame);
+}
+
+// Sozlash uchun: bitta sakrashni darhol hisoblab natijasini qaytaradi.
+window.__bf = {
+  tune(k, d, r, cz) { if (k) SPIN_K = k; if (d) WATER_DAMP = d; if (r !== undefined) RESTORE = r; if (cz) CATCH = cz; return [SPIN_K, WATER_DAMP, RESTORE, CATCH]; },
+  test(vx, vy, dy, dx, w = 110, type = 'stone', settleTime = 0) {
+    const saved = { platforms, b: { ...b }, lastStand, camY, lives, hint };
+    testing = true;
+    const g = { x: -60, y: 0, w: W + 120, type: 'ground', drift: 0 };
+    const t = { x: W / 2 + dx - w / 2, y: -dy, w, type, drift: type === 'ice' ? SURF.ice.drift : 0 };
+    platforms = [g, t]; camY = -H * 0.72;
+    placeStanding(g, W / 2, 'bottom');
+    launch(vx, vy);
+    let res = 'timeout', time = 0, standT = 0;
+    const dt = 1 / 480;
+    while (time < 8) {
+      time += dt;
+      if (b.state === 'fly') stepFly(dt);
+      else if (b.state === 'pivot') stepPivot(dt);
+      else if (b.state === 'stand') {
+        res = (b.plat === t ? 'T:' : 'G:') + b.end;
+        if (standT >= settleTime) break;
+        standT += dt; stepStand(dt);
+      }
+      else { res = b.state; break; }
+    }
+    platforms = saved.platforms; Object.assign(b, saved.b); lastStand = saved.lastStand;
+    camY = saved.camY; lives = saved.lives; hint = saved.hint;
+    testing = false;
+    return res;
+  }
+};
+
+// Til almashtirgich: sahifadagi barcha matnlarni tanlangan tilda qayta yozadi
+const langBtns = [...document.querySelectorAll('#menu .langs button')];
+function applyLang() {
+  document.documentElement.lang = lang;
+  canvas.setAttribute('aria-label', tr('game'));
+  document.getElementById('h-bottles').textContent = tr('bottles');
+  document.getElementById('h-themes').textContent = tr('themes');
+  document.getElementById('h-board').textContent = tr('board');
+  document.getElementById('life-label').textContent = tr('lifeBtn');
+  playBtn.textContent = tr('newGame'); resumeBtn.textContent = tr('resume'); shareBtn.textContent = tr('share');
+  lifeBtn.setAttribute('aria-label', tr('lifeAria')); menuBtn.setAttribute('aria-label', tr('menu'));
+  for (const bt of langBtns) bt.setAttribute('aria-pressed', String(bt.dataset.lang === lang));
+  shopKey = '';   // tugma yozuvlari keyingi kadrda yangilanadi
+  if (lbKey !== undefined) lbNote(lbKey);
+  paintSnd(); paintMenu(); renderLB();
+}
+for (const bt of langBtns) bt.addEventListener('click', () => { lang = bt.dataset.lang; store('bflip_lang', lang); applyLang(); });
+
+function start() {
+  resize();
+  applyBottle(bottleKey);
+  newGame();
+  buildMenu(); applyLang();
+  initLB();
+  requestAnimationFrame(t => { lastT = t; frame(t); });
+}
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start();
+})();
+</script>
+
+</body>
+</html>
